@@ -1,26 +1,72 @@
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* TUSSILAGO FONT */
+
+@font-face {
+  font-family: "Tussilago";
+  src: url("/fonts/TussilagoRg-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
+
+@font-face {
+  font-family: "Tussilago";
+  src: url("/fonts/TussilagoHv-Regular.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* THEME */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-tusli: "Tussilago", sans-serif;
+
+  --color-rdm-navy: #152741;
+  --color-rdm-gold: #EFB059;
+  --color-rdm-gray: #8D9CA5;
+  --color-rdm-gray-dark: #738595;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* GLOBAL */
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+section[id] {
+  scroll-margin-top: 100px;
+}
+
+/* NAVBAR */
+
+.rotate-icon {
+  transition: transform 0.5s ease;
+}
+
+.icon-open {
+  transform: rotate(0deg);
+}
+
+.icon-close {
+  transform: rotate(180deg);
+}
+
+/* EMBLA CAROUSEL */
+
+.expand {
+  max-height: 1000px;
+  transition: max-height 0.5s ease-in-out;
+}
+
+/* CONTACT SHADOW */
+
+.golge {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
 }
