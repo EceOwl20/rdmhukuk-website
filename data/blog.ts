@@ -4,6 +4,12 @@ export type BlogBlock = {
   paragraphs: string[];
 };
 
+export type BlogContentBlock =
+  | { type: "heading"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "image"; src: string; alt: string };
+
 export interface BlogPost {
   id: string;
   slug: string;
@@ -13,7 +19,7 @@ export interface BlogPost {
   author: string;
   publishedAt?: string;
   coverImage?: string;
-  content: BlogBlock[];
+  content: Array<BlogBlock | BlogContentBlock>;
 }
 
 export const blogPosts: BlogPost[] = [

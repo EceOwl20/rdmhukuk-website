@@ -86,7 +86,7 @@ export default function PrivacyNotice({
             <li className="text-left">Kişisel Verilerinizin işlenme nedenlerinin ortadan kalkması halinde Kişisel Verilerinizin silinmesini veya yok edilmesini isteme, bu hakkınızı kullanmanız halinde bu durumun Kişisel Verilerinizin aktarıldığı üçüncü kişilere de bildirilmesini isteme,</li>
             <li className="text-left">Elde ettiğimiz bilgilerin otomatik sistemler ile analizi yoluyla hakkınızda ortaya çıkan sonuca itiraz etme ve zarara uğramanız halinde tazminat talep etme.</li>
         </ul>
-        <p className="text-left">İlgili kişi bu haklarına ilişkin taleplerini Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ'e uygun bir şekilde iletebilir. Yukarıda belirtilen haklarınızı kullanmak için kimliğinizi tespit edici gerekli bilgiler ile talep dilekçenizi bizzat elden teslim edebilir, noter kanalıyla veya Kişisel Verileri Koruma Kurulu tarafından belirlenen diğer yöntemler ile iletebilirsiniz.</p>
+        <p className="text-left">İlgili kişi bu haklarına ilişkin taleplerini Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ&apos;e uygun bir şekilde iletebilir. Yukarıda belirtilen haklarınızı kullanmak için kimliğinizi tespit edici gerekli bilgiler ile talep dilekçenizi bizzat elden teslim edebilir, noter kanalıyla veya Kişisel Verileri Koruma Kurulu tarafından belirlenen diğer yöntemler ile iletebilirsiniz.</p>
 
         <p className="text-left">İlgili kişinin talepleri, en kısa sürede ve en geç otuz (30) gün içinde ücretsiz olarak değerlendirilip sonuçlandırılacaktır. Değerlendirme ve sonuçlandırma işleminin ek bir maliyet gerektirmesi durumunda, Kişisel Verileri Koruma Kurulu tarafından belirlenen ücret tarifesine uyulacaktır.</p>
     </div>

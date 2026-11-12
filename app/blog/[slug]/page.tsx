@@ -7,19 +7,60 @@ import { notFound } from "next/navigation";
 import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 
-import {
-  blogPosts,
-  getBlogPost,
-  getRelatedPosts,
-} from "@/data/blog";
+import { getSiteContent } from "@/lib/content-store";
+import type { BlogPost } from "@/data/blog";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
+function ArticleContent({ content }: { content: BlogPost["content"] }) {
+  return (
+    <div className="space-y-7">
+      {content.map((block, index) => {
+        if (!("type" in block)) {
+          return (
+            <section key={index} className="space-y-5 py-3">
+              {block.heading && <h2 className="text-[22px] leading-[1.5] font-bold text-[#152741] md:text-[27px]">{block.heading}</h2>}
+              {block.paragraphs.map((paragraph, paragraphIndex) => (
+                <p key={paragraphIndex} className="text-[14px] leading-[2] text-[#657A89] md:text-[15px]">{paragraph}</p>
+              ))}
+            </section>
+          );
+        }
+
+        if (block.type === "heading") {
+          return <h2 key={index} className="pt-5 text-[22px] leading-[1.5] font-bold text-[#152741] md:text-[27px]">{block.text}</h2>;
+        }
+        if (block.type === "paragraph") {
+          return <p key={index} className="whitespace-pre-line text-[14px] leading-[2] text-[#657A89] md:text-[15px]">{block.text}</p>;
+        }
+        if (block.type === "list") {
+          return (
+            <ul key={index} className="space-y-3 rounded-lg bg-[#F8FAFD] px-6 py-5 text-[14px] leading-[1.8] text-[#657A89] md:px-8 md:text-[15px]">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className="relative pl-6 before:absolute before:left-0 before:top-[0.7em] before:h-2 before:w-2 before:rounded-full before:bg-[#EFB059]">{item}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <figure key={index} className="py-3">
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-[#F1F4F7]">
+              <Image src={block.src} alt={block.alt} fill sizes="(max-width: 850px) 100vw, 850px" className="object-contain" />
+            </div>
+            {block.alt && <figcaption className="mt-3 text-center text-xs leading-5 text-[#738595]">{block.alt}</figcaption>}
+          </figure>
+        );
+      })}
+    </div>
+  );
+}
+
 // Build sırasında örnek blog sayfalarını oluştur.
-export function generateStaticParams() {
-  return blogPosts.map((post) => ({
+export async function generateStaticParams() {
+  const { blog } = await getSiteContent();
+  return blog.posts.map((post) => ({
     slug: post.slug,
   }));
 }
@@ -29,7 +70,7 @@ export async function generateMetadata({
   params,
 }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = (await getSiteContent()).blog.posts.find((item) => item.slug === slug);
 
   if (!post) {
     return {
@@ -62,13 +103,14 @@ export default async function BlogDetailPage({
   params,
 }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const { blog } = await getSiteContent();
+  const post = blog.posts.find((item) => item.slug === slug);
 
   if (!post) {
     notFound();
   }
 
-  const relatedPosts = getRelatedPosts(post.slug, 3);
+  const relatedPosts = blog.posts.filter((item) => item.slug !== post.slug).slice(0, 3);
 
   return (
     <>
@@ -141,31 +183,7 @@ export default async function BlogDetailPage({
           </p>
 
           {/* ARTICLE BODY */}
-          <div className="space-y-12">
-            {post.content.map((block, index) => (
-              <section
-                key={index}
-                className="space-y-5"
-              >
-                {block.heading && (
-                  <h2 className="text-[22px] leading-[1.5] font-bold text-[#152741] md:text-[27px]">
-                    {block.heading}
-                  </h2>
-                )}
-
-                {block.paragraphs.map(
-                  (paragraph, paragraphIndex) => (
-                    <p
-                      key={paragraphIndex}
-                      className="text-[14px] leading-[2] text-[#657A89] md:text-[15px]"
-                    >
-                      {paragraph}
-                    </p>
-                  )
-                )}
-              </section>
-            ))}
-          </div>
+          <ArticleContent content={post.content} />
 
           {/* DISCLAIMER */}
           <aside className="mt-14 rounded-md border-l-[3px] border-[#EFB059] bg-[#F8FAFD] px-6 py-5">

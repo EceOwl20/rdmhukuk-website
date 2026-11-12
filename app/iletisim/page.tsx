@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import ContactHero from "@/components/contact/ContactHero";
 import ContactForm from "@/components/contact/ContactForm";
+import { getSiteContent } from "@/lib/content-store";
 
 export const metadata: Metadata = {
   title: "İletişim",
@@ -13,10 +14,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { contact } = await getSiteContent();
   return (
     <>
-      <ContactHero />
+      <ContactHero contactInfo={contact} />
 
       {/* GOOGLE MAPS */}
       <section
@@ -25,7 +27,7 @@ export default function ContactPage() {
       >
         <iframe
           title="RDM Hukuk Bürosu - Google Maps"
-          src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d12769.265712659482!2d30.7410184!3d36.8588441!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14c39bc39322921b%3A0x19989ab998d407a3!2sRDM%20HUKUK%20%2F%20AV.YAREN%20ERDEM!5e0!3m2!1str!2str!4v1708523869735!5m2!1str!2str"
+          src={contact.mapEmbedUrl}
           width="100%"
           height="700"
           className="h-[400px] w-full border-0 sm:h-[500px] md:h-[700px]"
@@ -35,7 +37,7 @@ export default function ContactPage() {
         />
       </section>
 
-      <ContactForm />
+      <ContactForm contact={contact} />
     </>
   );
 }

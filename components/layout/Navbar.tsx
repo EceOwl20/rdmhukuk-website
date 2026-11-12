@@ -9,7 +9,7 @@ import { FaChevronRight } from "react-icons/fa";
 
 const navigationItems = [
   { label: "HİZMETLERİMİZ", href: "/#hizmetlerimiz" },
-  { label: "Blog", href: "/blog" },
+  { label: "BLOG", href: "/blog" },
   { label: "HAKKIMIZDA", href: "/#hakkimizda" },
   { label: "İLETİŞİM", href: "/iletisim" },
 ];

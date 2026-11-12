@@ -10,7 +10,7 @@ import PrivacyNotice from "./PrivacyNotice";
 import { FaPhone } from "react-icons/fa6";
 import { IoIosMail } from "react-icons/io";
 import { ImLocation2 } from "react-icons/im";
-import { contactInfo } from "@/data/contact";
+import type { SiteContent } from "@/lib/site-content-types";
 
 type FieldProps = {
   label: string;
@@ -78,7 +78,7 @@ function FormField({
   );
 }
 
-export default function ContactForm() {
+export default function ContactForm({ contact: contactInfo }: { contact: SiteContent["contact"] }) {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,10 +138,7 @@ export default function ContactForm() {
 
     {/* DESCRIPTION */}
     <p className="max-w-[750px] text-center text-[14px] leading-[1.6] text-[#738595]">
-      Merak ettiğiniz konular hakkında bilgi almak,
-      hizmetlerimizle ilgili daha fazla detay öğrenmek
-      veya hukuki danışmanlık talebinde bulunmak için
-      bizimle iletişime geçebilirsiniz.
+      {contactInfo.intro}
     </p>
 
     {/* CONTACT INFORMATION */}
@@ -157,7 +154,7 @@ export default function ContactForm() {
         </span>
 
         <span className="whitespace-nowrap text-[15px] font-bold text-[#152741] transition-colors group-hover:text-[#EFB059]">
-          0242 317 07 84
+          {contactInfo.phone}
         </span>
       </a>
 
@@ -239,10 +236,7 @@ export default function ContactForm() {
               </div>
 
               <p className="text-justify text-[12px] leading-relaxed text-[#738595]">
-                Merak ettiğiniz konular hakkında bilgi almak,
-                hizmetlerimizle ilgili daha fazla detay öğrenmek
-                veya hukuki danışmanlık talebinde bulunmak için
-                bizimle iletişime geçebilirsiniz.
+                {contactInfo.intro}
               </p>
             </div>
 

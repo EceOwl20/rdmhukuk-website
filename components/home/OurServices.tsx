@@ -8,10 +8,9 @@ import { FaChevronDown } from "react-icons/fa";
 import ServicesSwiper from "./ServicesSwiper";
 
 import {
-  services,
-  servicesIntro,
   type ServiceItem,
 } from "@/data/services";
+import type { SiteContent } from "@/lib/site-content-types";
 
 function ServiceCard({
   title,
@@ -50,7 +49,7 @@ function ServiceCard({
   );
 }
 
-export default function OurServices() {
+export default function OurServices({ content }: { content: SiteContent["home"] }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -81,7 +80,7 @@ export default function OurServices() {
               font-bold text-[#152741]
               sm:text-[25px]"
           >
-            HİZMETLERİMİZ
+            {content.servicesTitle}
           </h2>
         </div>
 
@@ -91,7 +90,7 @@ export default function OurServices() {
             leading-relaxed font-normal
             text-[#738595] sm:text-[15px]"
         >
-          {servicesIntro}
+          {content.servicesIntro}
         </p>
       </div>
 
@@ -101,7 +100,7 @@ export default function OurServices() {
           items-center justify-center
           md:mb-20 md:mt-10"
       >
-        <ServicesSwiper />
+        <ServicesSwiper slides={content.serviceSlides} />
       </div>
 
       {/* SERVICES DETAILS */}
@@ -113,7 +112,7 @@ export default function OurServices() {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
 
           {/* FIRST TWO SERVICES */}
-          {services.slice(0, 2).map((service) => (
+          {content.services.slice(0, 2).map((service) => (
             <ServiceCard
               key={service.id}
               {...service}
@@ -134,7 +133,7 @@ export default function OurServices() {
           >
             <div className="min-h-0 overflow-hidden">
               <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-                {services.slice(2).map((service) => (
+                {content.services.slice(2).map((service) => (
                   <ServiceCard
                     key={service.id}
                     {...service}

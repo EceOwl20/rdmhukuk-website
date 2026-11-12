@@ -1,4 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RDM Hukuk Web Sitesi
+
+Next.js tabanlı kurumsal site ve dahili içerik yönetim paneli.
+
+## Yönetim paneli
+
+Panel `/yonetim` adresindedir. İlk çalıştırmadan önce `.env.example` dosyasını `.env.local` olarak kopyalayın ve `ADMIN_USERNAME`, `ADMIN_PASSWORD` ile en az 32 karakterlik `SESSION_SECRET` değerlerini değiştirin.
+
+Yerel geliştirmede çevre değişkenleri tanımlı değilse `admin` / `admin123` bilgileriyle giriş yapılabilir. Bu geçici bilgiler production ortamında çalışmaz.
+
+Panelden anasayfa ve iletişim sayfası metin/görselleri, blog yazıları ve yalnızca panelde görünen özel belgeler yönetilir. İçerikler varsayılan olarak proje kökündeki `uploads` klasöründe tutulur. Canlı sunucuda bu klasörü kalıcı bir volume'a bağlayın veya `CONTENT_STORAGE_PATH` ile kalıcı dizini belirtin. Dağıtım sırasında bu dizin silinmemelidir.
+
+Örnek Docker volume eşlemesi:
+
+```yaml
+volumes:
+  - rdm_uploads:/app/uploads
+```
 
 ## Getting Started
 

@@ -1,6 +1,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 
 import {
   FaYoutube,
@@ -116,7 +117,9 @@ function FooterSocials({
   );
 }
 
-export default function Footer() {
+export default async function Footer() {
+  "use cache";
+  cacheLife("days");
   const year = new Date().getFullYear();
 
   return (

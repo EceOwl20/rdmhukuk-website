@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
-import { heroSlides } from "@/data/hero";
+import type { HeroSlide } from "@/data/hero";
 
-export default function HeroSwiper() {
+export default function HeroSwiper({ slides }: { slides: HeroSlide[] }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: "start",
@@ -25,7 +25,6 @@ export default function HeroSwiper() {
   useEffect(() => {
     if (!emblaApi) return;
 
-    onSelect();
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
 
@@ -48,7 +47,7 @@ export default function HeroSwiper() {
       {/* SLIDER CONTENT */}
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex touch-pan-y">
-          {heroSlides.map((slide) => (
+          {slides.map((slide) => (
             <div
               key={slide.id}
               className="min-w-0 flex-[0_0_100%]"
@@ -77,7 +76,7 @@ export default function HeroSwiper() {
 
       {/* PAGINATION DOTS */}
       <div className="absolute left-0 top-[440px] flex items-center gap-2">
-        {heroSlides.map((slide, index) => (
+        {slides.map((slide, index) => (
           <button
             key={slide.id}
             type="button"

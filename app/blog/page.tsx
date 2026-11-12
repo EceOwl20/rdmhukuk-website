@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 
-import { blogPosts } from "@/data/blog";
+import { getSiteContent } from "@/lib/content-store";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -12,12 +12,13 @@ export const metadata: Metadata = {
     "RDM Hukuk Bürosu blog sayfası. KVKK, sağlık hukuku, şirketler hukuku ve diğer hukuk alanları hakkında bilgilendirici içerikler.",
 };
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  const { blog } = await getSiteContent();
   return (
     <>
       <BlogHeader
-        title="BLOG & MAKALELER"
-        description="Hukuki gelişmeleri, güncel konuları ve farklı hukuk alanlarına ilişkin bilgilendirici yazılarımızı keşfedin."
+        title={blog.title}
+        description={blog.description}
         showBreadcrumb
       />
 
@@ -39,9 +40,9 @@ export default function BlogPage() {
           </div>
 
           {/* BLOG GRID */}
-          {blogPosts.length > 0 ? (
+          {blog.posts.length > 0 ? (
             <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3 lg:gap-9">
-              {blogPosts.map((post) => (
+              {blog.posts.map((post) => (
                 <BlogCard
                   key={post.id}
                   post={post}

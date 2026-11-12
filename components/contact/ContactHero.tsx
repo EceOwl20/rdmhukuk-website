@@ -5,9 +5,9 @@ import { FaPhone } from "react-icons/fa6";
 import { IoIosMail } from "react-icons/io";
 import { ImLocation2 } from "react-icons/im";
 
-import { contactInfo } from "@/data/contact";
+import type { SiteContent } from "@/lib/site-content-types";
 
-export default function ContactHero() {
+export default function ContactHero({ contactInfo }: { contactInfo: SiteContent["contact"] }) {
   return (
     <section className="relative w-full">
 
@@ -15,7 +15,7 @@ export default function ContactHero() {
       <div className="relative h-[300px] w-full sm:h-[350px] md:h-[418px]">
 
         <Image
-          src="/images/contact/contact-hero.png"
+          src={contactInfo.heroImage}
           alt="RDM Hukuk Bürosu İletişim"
           fill
           priority
@@ -28,7 +28,7 @@ export default function ContactHero() {
             className=" text-[30px] font-bold
               text-white sm:text-[50px] xl:text-[80px]"
           >
-            İLETİŞİM
+            {contactInfo.title}
           </h1>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function ContactHero() {
             </div>
 
             <span className="text-[12px] font-bold text-[#152741] lg:text-[18px]">
-              0242 317 07 84
+              {contactInfo.phone}
             </span>
           </a>
 

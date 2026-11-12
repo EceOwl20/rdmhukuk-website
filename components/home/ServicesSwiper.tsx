@@ -5,9 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 
-import { serviceSlides } from "@/data/serviceSlides";
+import type { ServiceSlide } from "@/data/serviceSlides";
 
-export default function ServicesSwiper() {
+export default function ServicesSwiper({ slides }: { slides: ServiceSlide[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -46,7 +46,7 @@ export default function ServicesSwiper() {
         className="mx-auto w-full max-w-[1223px] overflow-hidden"
       >
         <div className="flex items-stretch gap-[14px] md:gap-[30px] lg:gap-[38px]">
-          {serviceSlides.map((slide, index) => {
+          {slides.map((slide, index) => {
             const isActive = activeIndex === index;
 
             return (

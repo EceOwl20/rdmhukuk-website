@@ -1,9 +1,9 @@
 
 import Image from "next/image";
-import { aboutContent } from "@/data/about";
+import type { SiteContent } from "@/lib/site-content-types";
 
-export default function AboutSection() {
-  const { title, paragraphs, lawyer } = aboutContent;
+export default function AboutSection({ content }: { content: SiteContent["home"]["about"] }) {
+  const { title, paragraphs, lawyer } = content;
 
   return (
     <section
@@ -14,7 +14,7 @@ export default function AboutSection() {
     >
       {/* DESKTOP BACKGROUND */}
       <Image
-        src="/images/home/about-us.jpg"
+        src={content.desktopImage}
         alt=""
         fill
         sizes="(min-width: 768px) 100vw, 1px"
@@ -23,7 +23,7 @@ export default function AboutSection() {
 
       {/* MOBILE BACKGROUND */}
       <Image
-        src="/images/home/about-mobile.jpg"
+        src={content.mobileImage}
         alt=""
         fill
         sizes="(max-width: 767px) 100vw, 1px"

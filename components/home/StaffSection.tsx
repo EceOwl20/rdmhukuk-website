@@ -3,11 +3,11 @@ import Image from "next/image";
 import { FaChevronRight } from "react-icons/fa";
 import Link from "next/link";
 
-import { staffContent } from "@/data/about";
+import type { SiteContent } from "@/lib/site-content-types";
 
-export default function StaffSection() {
+export default function StaffSection({ content }: { content: SiteContent["home"]["staff"] }) {
   const { name, specialization, description, image } =
-    staffContent;
+    content;
 
   return (
     <section

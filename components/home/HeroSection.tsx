@@ -1,8 +1,9 @@
 
 import Image from "next/image";
 import HeroSwiper from "./HeroSwiper";
+import type { SiteContent } from "@/lib/site-content-types";
 
-export default function HeroSection() {
+export default function HeroSection({ content }: { content: SiteContent["home"] }) {
   return (
     <section
       id="hero"
@@ -11,7 +12,7 @@ export default function HeroSection() {
     >
       {/* MOBILE IMAGE */}
       <Image
-        src="/images/home/mobilehero.jpg"
+        src={content.heroMobileImage}
         alt="RDM Hukuk Bürosu"
         fill
         priority
@@ -21,7 +22,7 @@ export default function HeroSection() {
 
       {/* DESKTOP IMAGE */}
       <Image
-        src="/images/home/main-image.jpg"
+        src={content.heroDesktopImage}
         alt="RDM Hukuk Bürosu - Adalet heykeli"
         fill
         priority
@@ -37,7 +38,7 @@ export default function HeroSection() {
             className="absolute left-[10%] top-[35%]
               w-[35%] max-w-[550px]"
           >
-            <HeroSwiper />
+            <HeroSwiper slides={content.heroSlides} />
           </div>
 
         </div>
