@@ -16,6 +16,13 @@ import {
   saveImage,
   writeSiteContent,
 } from "@/lib/content-store";
+import {
+  createTask,
+  deleteTask,
+  setTaskCompleted,
+  updateTask,
+} from "@/lib/task-store";
+import type { TaskPriority } from "@/lib/task-types";
 import type { BlogContentBlock, BlogPost } from "@/data/blog";
 
 function value(formData: FormData, name: string, maxLength = 10_000) {
@@ -38,6 +45,22 @@ function storedImageValue(formData: FormData, name: string) {
   const isUploadedImage = /^\/uploads\/images\/[a-zA-Z0-9._-]+$/.test(url);
   const isSiteImage = /^\/images\/[a-zA-Z0-9._/-]+$/.test(url) && !url.includes("..");
   return isUploadedImage || isSiteImage ? url : "";
+}
+
+function taskPriorityValue(formData: FormData): TaskPriority {
+  const priority = value(formData, "priority", 20);
+  return priority === "low" || priority === "high" ? priority : "normal";
+}
+
+function taskDateTimeValue(formData: FormData, name: string) {
+  const rawValue = value(formData, name, 40);
+  if (!rawValue) return null;
+
+  // datetime-local saat dilimi taşımaz. Panel Türkiye için kullanıldığından
+  // değeri sabit UTC+3 ile ISO biçimine dönüştürüyoruz.
+  const localDateTime = rawValue.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/);
+  if (!localDateTime) return rawValue;
+  return `${rawValue.length === 16 ? `${rawValue}:00` : rawValue}+03:00`;
 }
 
 function slugify(input: string) {
@@ -259,4 +282,45 @@ export async function deleteDocumentAction(formData: FormData) {
   await requireAdmin();
   await deleteDocumentById(required(formData, "id", 100));
   redirect("/yonetim/belgeler?durum=silindi");
+}
+
+export async function createTaskAction(formData: FormData) {
+  await requireAdmin();
+  await createTask({
+    title: required(formData, "title", 200),
+    description: value(formData, "description", 10_000),
+    category: value(formData, "category", 100),
+    priority: taskPriorityValue(formData),
+    dueAt: taskDateTimeValue(formData, "dueAt"),
+    reminderAt: taskDateTimeValue(formData, "reminderAt"),
+  });
+  redirect("/yonetim/gorevler?durum=eklendi");
+}
+
+export async function updateTaskAction(formData: FormData) {
+  await requireAdmin();
+  await updateTask(required(formData, "id", 100), {
+    title: required(formData, "title", 200),
+    description: value(formData, "description", 10_000),
+    category: value(formData, "category", 100),
+    priority: taskPriorityValue(formData),
+    dueAt: taskDateTimeValue(formData, "dueAt"),
+    reminderAt: taskDateTimeValue(formData, "reminderAt"),
+  });
+  redirect("/yonetim/gorevler?durum=guncellendi");
+}
+
+export async function toggleTaskAction(formData: FormData) {
+  await requireAdmin();
+  await setTaskCompleted(
+    required(formData, "id", 100),
+    value(formData, "completed", 10) === "true",
+  );
+  redirect("/yonetim/gorevler?durum=durum-guncellendi");
+}
+
+export async function deleteTaskAction(formData: FormData) {
+  await requireAdmin();
+  await deleteTask(required(formData, "id", 100));
+  redirect("/yonetim/gorevler?durum=silindi");
 }

@@ -8,6 +8,7 @@ import { logoutAction } from "@/app/yonetim/actions";
 
 const links = [
   { href: "/yonetim", label: "Sayfa İçerikleri" },
+  { href: "/yonetim/gorevler", label: "Görevler ve İşler" },
   { href: "/yonetim/blog", label: "Blog Yazıları" },
   { href: "/yonetim/gorseller", label: "Görseller" },
   { href: "/yonetim/belgeler", label: "Belgeler" },
