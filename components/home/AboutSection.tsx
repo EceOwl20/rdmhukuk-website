@@ -10,7 +10,7 @@ export default function AboutSection() {
       id="hakkimizda"
       className="relative mt-5 h-[350px] w-full overflow-hidden
         sm:h-[420px] md:mt-[120px] md:h-[500px]
-        xl:h-[716px]"
+        xl:h-[716px] font-medium"
     >
       {/* DESKTOP BACKGROUND */}
       <Image
@@ -54,10 +54,10 @@ export default function AboutSection() {
             />
 
             <h2
-              className="font-tusli text-[15px]
+              className=" text-[15px]
                 font-bold text-[#152741]
                 lg:text-[16px] xl:text-[20px]
-                2xl:text-[25px]"
+                2xl:text-[25px] font-tusli"
             >
               {title}
             </h2>
@@ -75,7 +75,7 @@ export default function AboutSection() {
             {paragraphs[2]}
           </p>
 
-          <h3 className="hidden font-tusli text-[15px] font-bold text-[#152741] xl:block">
+          <h3 className="hidden  text-[15px] font-bold text-[#152741] xl:block font-tusli">
             {lawyer.name}
           </h3>
 
@@ -101,7 +101,7 @@ export default function AboutSection() {
             className="h-4 w-4 object-contain"
           />
 
-          <h2 className="font-tusli text-[15px] font-bold text-[#152741]">
+          <h2 className=" text-[15px] font-bold text-[#152741]">
             {title}
           </h2>
         </div>
@@ -114,7 +114,7 @@ export default function AboutSection() {
           {paragraphs[2]}
         </p>
 
-        <h3 className="font-tusli text-[15px] font-bold text-[#152741]">
+        <h3 className=" text-[15px] font-bold text-[#152741]">
           {lawyer.name}
         </h3>
       </div>

@@ -91,7 +91,7 @@ export default function ServicesSwiper() {
                     />
 
                     <span
-                      className="font-tusli whitespace-nowrap
+                      className=" whitespace-nowrap
                         text-[15px] font-bold"
                     >
                       {slide.title}
@@ -122,7 +122,7 @@ export default function ServicesSwiper() {
                       2xl:h-[350px]"
                   >
                     <h3
-                      className="font-tusli text-[15px]
+                      className=" text-[15px]
                         font-bold text-[#152741]
                         lg:text-[20px] xl:text-[25px]"
                     >

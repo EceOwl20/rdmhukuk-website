@@ -1,28 +1,13 @@
 
 @import "tailwindcss";
 
-/* TUSSILAGO FONT */
-
-@font-face {
-  font-family: "Tussilago";
-  src: url("/fonts/TussilagoRg-Regular.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Tussilago";
-  src: url("/fonts/TussilagoHv-Regular.otf") format("opentype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* THEME */
 
 @theme inline {
-  --font-tusli: "Tussilago", sans-serif;
+   /* FONTS */
+  --font-sans: var(--font-montserrat);
+  --font-mont: var(--font-montserrat);
+  --font-tusli: var(--font-tussilago);
 
   --color-rdm-navy: #152741;
   --color-rdm-gold: #EFB059;
@@ -38,6 +23,7 @@ html {
 
 body {
   margin: 0;
+  font-family: var(--font-montserrat), sans-serif;
 }
 
 section[id] {
@@ -69,4 +55,16 @@ section[id] {
 
 .golge {
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
+}
+
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-tussilago), sans-serif;
+  }
 }

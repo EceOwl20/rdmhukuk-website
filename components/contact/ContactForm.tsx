@@ -5,9 +5,12 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { FaChevronRight } from "react-icons/fa";
 import { toast } from "sonner";
-
 import { sendEmail } from "@/app/actions/sendEmail";
 import PrivacyNotice from "./PrivacyNotice";
+import { FaPhone } from "react-icons/fa6";
+import { IoIosMail } from "react-icons/io";
+import { ImLocation2 } from "react-icons/im";
+import { contactInfo } from "@/data/contact";
 
 type FieldProps = {
   label: string;
@@ -27,7 +30,7 @@ function FormField({
   const inputClasses =
     "w-full rounded-lg border border-dotted border-black " +
     "bg-transparent px-4 py-3 text-[14px] text-[#152741] " +
-    "outline-none transition-colors focus:border-solid " +
+    "outline-none transition-colors focus:border-solid" +
     "focus:border-[#EFB059]";
 
   return (
@@ -44,7 +47,7 @@ function FormField({
           className="h-3 w-3 shrink-0"
         />
 
-        <span className="font-tusli text-[15px] font-bold text-[#152741]">
+        <span className=" text-[16px] font-bold text-[#152741] font-tusli">
           {label}
         </span>
       </label>
@@ -110,23 +113,98 @@ export default function ContactForm() {
       className="relative w-full"
     >
       {/* DESKTOP SPACING */}
-      <div className="hidden h-[320px] md:block" />
+      <div className="hidden h-[20px] md:block" />
+
+
+
+{/* CONTACT INTRO - DESKTOP */}
+<div className="relative hidden w-full flex-col items-center justify-center bg-white px-5 pb-[100px] pt-[60px] md:flex">
+  <div className="flex w-full max-w-[750px] flex-col items-center gap-5">
+
+    {/* TITLE */}
+    <div className="flex items-center justify-center gap-3">
+      <Image
+        src="/images/home/title-tag.svg"
+        alt=""
+        width={24}
+        height={40}
+        className="h-[40px] w-auto object-contain"
+      />
+
+      <h2 className="font-tusli text-[22px] font-bold text-[#152741]">
+        İLETİŞİME GEÇ
+      </h2>
+    </div>
+
+    {/* DESCRIPTION */}
+    <p className="max-w-[750px] text-center text-[14px] leading-[1.6] text-[#738595]">
+      Merak ettiğiniz konular hakkında bilgi almak,
+      hizmetlerimizle ilgili daha fazla detay öğrenmek
+      veya hukuki danışmanlık talebinde bulunmak için
+      bizimle iletişime geçebilirsiniz.
+    </p>
+
+    {/* CONTACT INFORMATION */}
+    <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-4 lg:justify-between lg:gap-x-5">
+
+      {/* PHONE */}
+      <a
+        href={contactInfo.phoneHref}
+        className="group flex items-center gap-3"
+      >
+        <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-lg bg-[#152741]">
+          <FaPhone className="text-[18px] text-[#EFB059]" />
+        </span>
+
+        <span className="whitespace-nowrap text-[15px] font-bold text-[#152741] transition-colors group-hover:text-[#EFB059]">
+          0242 317 07 84
+        </span>
+      </a>
+
+      {/* EMAIL */}
+      <a
+        href={contactInfo.emailHref}
+        className="group flex items-center gap-3"
+      >
+        <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-lg bg-[#152741]">
+          <IoIosMail className="text-[19px] text-[#EFB059]" />
+        </span>
+
+        <span className="whitespace-nowrap text-[15px] font-bold text-[#152741] transition-colors group-hover:text-[#EFB059]">
+          {contactInfo.email}
+        </span>
+      </a>
+
+      {/* LOCATION */}
+      <div className="flex items-center gap-3">
+        <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-lg bg-[#152741]">
+          <ImLocation2 className="text-[18px] text-[#EFB059]" />
+        </span>
+
+        <span className="whitespace-nowrap text-[15px] font-bold text-[#152741]">
+          {contactInfo.location}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
 
       {/* FORM AREA */}
-      <div className="relative w-full bg-[#EFB059] px-5 pb-12 pt-8 md:min-h-[240px] md:pt-0">
+<div className="relative w-full bg-[#EFB059] px-5 pt-8 pb-10 md:h-[200px] md:pt-0 md:pb-0]">
 
         <div
-          className="relative z-10 mx-auto w-full max-w-[850px]
+          className="relative z-10 mx-auto w-full max-w-[750px]
             md:-translate-y-[80px]"
         >
           {/* DECORATIVE TYPEWRITER */}
-          <div
-            className="pointer-events-none absolute
-              -left-[330px] -top-[70px] z-0
-              hidden h-[370px] w-[370px] xl:block
-              2xl:-left-[460px] 2xl:-top-[130px]
-              2xl:h-[500px] 2xl:w-[500px]"
-          >
+         <div
+  className="pointer-events-none absolute
+    -left-[330px] -top-[40px] z-0
+    hidden h-[370px] w-[370px] xl:block
+    2xl:-left-[460px] 2xl:-top-[100px]
+    2xl:h-[500px] 2xl:w-[500px]"
+>
             <Image
               src="/images/home/daktilo.png"
               alt=""
@@ -155,7 +233,7 @@ export default function ContactForm() {
                   width={14}
                   height={14}
                 />
-                <h2 className="font-tusli text-[15px] font-bold text-[#152741]">
+                <h2 className=" text-[15px] font-bold text-[#152741]">
                   İLETİŞİME GEÇ
                 </h2>
               </div>
@@ -177,6 +255,7 @@ export default function ContactForm() {
                 label="İSİM SOYİSİM"
                 name="name"
                 placeholder="Adınız Soyadınız"
+                
               />
 
               <FormField

@@ -25,7 +25,7 @@ export default function ContactHero() {
 
         <div className="absolute inset-0 flex items-center justify-center">
           <h1
-            className="font-tusli text-[30px] font-bold
+            className=" text-[30px] font-bold
               text-white sm:text-[50px] xl:text-[80px]"
           >
             İLETİŞİM

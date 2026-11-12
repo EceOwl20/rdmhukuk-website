@@ -55,17 +55,17 @@ export default function HeroSwiper() {
             >
               <div className="max-w-[550px]">
                 <h1
-                  className="font-tusli text-[32px]
+                  className=" text-[32px]
                     leading-[1.4] font-bold text-[#152741]
-                    lg:text-[36px]"
+                    lg:text-[34px] font-tusli xl:text-[36px]"
                 >
                   {slide.title}
                 </h1>
 
                 <p
                   className="mt-4 text-[17px] leading-[1.55]
-                    font-normal text-[#738595]
-                    lg:text-[19px]"
+                     text-[#738595]
+                    lg:text-[19px] font-medium"
                 >
                   {slide.description}
                 </p>

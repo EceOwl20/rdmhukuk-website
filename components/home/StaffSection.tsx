@@ -54,7 +54,7 @@ export default function StaffSection() {
             />
 
             <h2
-              className="font-tusli text-[20px]
+              className=" text-[20px]
                 font-bold text-white md:text-[25px]"
             >
               {name}
@@ -95,7 +95,7 @@ export default function StaffSection() {
                 />
 
                 <h3
-                  className="font-tusli text-[18px]
+                  className=" text-[18px]
                     leading-snug font-bold
                     text-[#152741] sm:text-[20px]"
                 >

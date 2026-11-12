@@ -12,7 +12,7 @@ import { IoIosMail } from "react-icons/io";
 
 const footerLinks = [
   { label: "HİZMETLERİMİZ", href: "/#hizmetlerimiz" },
-  { label: "GALERİ", href: "/#galeri" },
+  { label: "Blog", href: "/#blog" },
   { label: "HAKKIMIZDA", href: "/#hakkimizda" },
   { label: "İLETİŞİM", href: "/iletisim" },
 ];
@@ -50,7 +50,7 @@ function FooterLink({
   return (
     <Link
       href={href}
-      className="group relative w-fit font-tusli text-[14px] text-white transition-colors duration-300"
+      className="group relative w-fit font-medium font-tusli text-[16px] text-white transition-colors duration-300"
     >
       {label}
 
@@ -127,7 +127,7 @@ export default function Footer() {
         <div className="mx-auto grid w-full max-w-[1250px] grid-cols-[1fr_auto_1fr] items-center gap-8">
 
           {/* LEFT LINKS */}
-          <div className="flex items-center justify-end gap-6 lg:gap-12">
+          <div className="flex items-center justify-end gap-6 lg:gap-14">
             {footerLinks.slice(0, 2).map((item) => (
               <FooterLink key={item.label} {...item} />
             ))}
@@ -143,9 +143,9 @@ export default function Footer() {
               <Image
                 src="/images/home/footer-logo.svg"
                 alt="RDM Hukuk Bürosu"
-                width={160}
-                height={90}
-                className="h-auto w-[180px] object-contain"
+                width={120}
+                height={70}
+                className="h-auto w-[120px] object-contain"
               />
             </Link>
 

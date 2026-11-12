@@ -9,7 +9,7 @@ import { FaChevronRight } from "react-icons/fa";
 
 const navigationItems = [
   { label: "HİZMETLERİMİZ", href: "/#hizmetlerimiz" },
-  { label: "GALERİ", href: "/#galeri" },
+  { label: "Blog", href: "/blog" },
   { label: "HAKKIMIZDA", href: "/#hakkimizda" },
   { label: "İLETİŞİM", href: "/iletisim" },
 ];
@@ -39,7 +39,7 @@ export default function Navbar() {
 
   const navLinkClass =
     "group relative flex items-center justify-center " +
-    "font-tusli text-[15px] text-white transition-colors";
+    " text-[16px] text-white transition-colors";
 
   const underlineClass =
     "absolute bottom-[-5px] left-1/2 h-[2px] w-0 " +
@@ -47,8 +47,8 @@ export default function Navbar() {
     "duration-500 ease-out group-hover:w-full";
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 bg-[#152741] text-white shadow-lg">
-      <div className="mx-auto flex h-[60px] w-full max-w-[1600px] items-center justify-between px-4 md:justify-center md:px-6">
+    <nav className="fixed inset-x-0 top-0 z-50 bg-[#152741] text-white shadow-lg font-tusli font-medium">
+      <div className="mx-auto flex h-[70px] w-full max-w-[1600px] items-center justify-between px-4 md:justify-center md:px-6">
 
         {/* MOBILE LOGO */}
         <Link
@@ -68,7 +68,7 @@ export default function Navbar() {
         </Link>
 
         {/* DESKTOP NAVIGATION */}
-        <div className="hidden items-center justify-center gap-8 md:flex lg:gap-16 xl:gap-24">
+        <div className="hidden items-center justify-center gap-8 md:flex lg:gap-16 xl:gap-24 2xl:gap-29">
 
           {navigationItems.slice(0, 2).map((item) => (
             <Link
@@ -90,10 +90,10 @@ export default function Navbar() {
             <Image
               src="/images/home/header-logo.svg"
               alt="RDM Hukuk"
-              width={45}
-              height={45}
+              width={35}
+              height={35}
               priority
-              className="h-[65px] w-auto object-contain"
+              className="h-[45px] w-auto object-contain"
             />
           </Link>
 
@@ -145,7 +145,7 @@ export default function Navbar() {
               href={item.href}
               onClick={closeMenu}
               tabIndex={isMenuOpen ? 0 : -1}
-              className="font-tusli flex items-center justify-between text-[15px] text-white transition-colors hover:text-[#EFB059]"
+              className=" flex items-center justify-between text-[15px] text-white transition-colors hover:text-[#EFB059]"
             >
               <span>{item.label}</span>
               <FaChevronRight className="text-sm text-[#EFB059]" />

@@ -30,7 +30,7 @@ function ServiceCard({
         />
 
         <h3
-          className="min-w-0 font-tusli text-[15px]
+          className="min-w-0  text-[15px]
             leading-snug font-bold text-[#738595]
             sm:text-[20px]"
         >
@@ -77,7 +77,7 @@ export default function OurServices() {
           />
 
           <h2
-            className="font-tusli text-[15px]
+            className=" text-[15px]
               font-bold text-[#152741]
               sm:text-[25px]"
           >

@@ -34,7 +34,7 @@ export default function HeroSection() {
         <div className="relative mx-auto h-full w-full max-w-[1600px]">
 
           <div
-            className="absolute left-[12.7%] top-[34%]
+            className="absolute left-[10%] top-[35%]
               w-[35%] max-w-[550px]"
           >
             <HeroSwiper />
