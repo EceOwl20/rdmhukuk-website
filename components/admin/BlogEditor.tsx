@@ -309,14 +309,14 @@ export default function BlogEditor({
   return (
     <form
       action={saveBlogPostAction}
-      className="mx-auto max-w-[1700px] space-y-7 pb-10"
+      className="mx-auto max-w-[1700px] space-y-5 lg:space-y-7 pb-10"
     >
       {post && (
         <input type="hidden" name="id" value={post.id} />
       )}
 
       {/* PAGE HEADER */}
-      <div className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 lg:gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
             <span>YÖNETİM PANELİ</span>
@@ -324,13 +324,13 @@ export default function BlogEditor({
             <span>BLOG</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-[#152741] md:text-3xl">
+          <h1 className="text-2xl leading-7 lg:leading-9 font-bold text-[#152741] md:text-3xl">
             {post
               ? "Blog Yazısını Düzenle"
               : "Yeni Blog Yazısı"}
           </h1>
 
-          <p className="text-sm leading-6 text-slate-500">
+          <p className="text-xs lg:text-sm leading-5 lg:leading-6 text-slate-500">
             Blog içeriğinizi oluşturun, görsellerinizi seçin ve
             yazınızı yayınlayın.
           </p>

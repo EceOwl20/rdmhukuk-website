@@ -36,6 +36,7 @@ import {
   getImages,
   getSiteContent,
 } from "@/lib/content-store";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /* -----------------------------------------
    COMMON STYLES
@@ -260,6 +261,8 @@ export default async function AdminContentPage({
 }: {
   searchParams: Promise<{ durum?: string }>;
 }) {
+  await requireAdmin();
+
   const [content, images, params] = await Promise.all([
     getSiteContent(),
     getImages(),

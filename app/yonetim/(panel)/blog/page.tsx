@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { deleteBlogPostAction } from "@/app/yonetim/actions";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getSiteContent } from "@/lib/content-store";
 
 export default async function AdminBlogPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+  await requireAdmin();
   const [content, params] = await Promise.all([getSiteContent(), searchParams]);
   return (
     <div className="mx-auto max-w-7xl space-y-7">

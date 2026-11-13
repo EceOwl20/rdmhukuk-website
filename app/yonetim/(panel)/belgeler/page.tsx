@@ -1,8 +1,10 @@
 import { deleteDocumentAction, uploadDocumentAction } from "@/app/yonetim/actions";
 import { PanelSection, SaveButton } from "@/components/admin/FormFields";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getDocuments } from "@/lib/content-store";
 
 export default async function DocumentsPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+  await requireAdmin();
   const [documents, params] = await Promise.all([getDocuments(), searchParams]);
   return (
     <div className="mx-auto max-w-5xl space-y-7">

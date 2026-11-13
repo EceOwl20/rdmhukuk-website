@@ -1,10 +1,12 @@
 import Image from "next/image";
 
-import { uploadLibraryImageAction } from "@/app/yonetim/actions";
-import { PanelSection, SaveButton } from "@/components/admin/FormFields";
+import ImageLibraryUpload from "@/components/admin/ImageLibraryUpload";
+import { PanelSection } from "@/components/admin/FormFields";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getImages } from "@/lib/content-store";
 
 export default async function ImagesPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+  await requireAdmin();
   const [images, params] = await Promise.all([getImages(), searchParams]);
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:space-y-7">
@@ -15,10 +17,7 @@ export default async function ImagesPage({ searchParams }: { searchParams: Promi
       </div>
       {params.durum && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Görsel kütüphaneye eklendi.</p>}
       <PanelSection title="Yeni görsel yükle" description="JPG, PNG, WebP, GIF veya SVG; en fazla 8 MB. Aynı dosya yeniden yüklenirse mevcut kayıt kullanılır.">
-        <form action={uploadLibraryImageAction} className="flex flex-wrap items-end gap-4">
-          <label className="min-w-[260px] flex-1 text-sm font-semibold">Görsel<input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" required className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 lg:px-4 lg:py-3 font-normal file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#203b61]" /></label>
-          <SaveButton>Görseli yükle</SaveButton>
-        </form>
+        <ImageLibraryUpload />
       </PanelSection>
       {images.length ? (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
