@@ -16,7 +16,7 @@ export default async function ImagesPage({ searchParams }: { searchParams: Promi
         <p className="mt-1 lg:mt-2 text-xs lg:text-sm text-slate-500">Sitenin mevcut görselleri ve sonradan yüklenen dosyalar burada birlikte saklanır. Önceki görsellere istediğiniz zaman geri dönebilirsiniz.</p>
       </div>
       {params.durum && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Görsel kütüphaneye eklendi.</p>}
-      <PanelSection title="Yeni görsel yükle" description="JPG, PNG, WebP, GIF veya SVG; en fazla 8 MB. Aynı dosya yeniden yüklenirse mevcut kayıt kullanılır.">
+      <PanelSection title="Yeni görsel yükle" description="JPG, PNG, WebP veya GIF; en fazla 8 MB. Aynı dosya yeniden yüklenirse mevcut kayıt kullanılır.">
         <ImageLibraryUpload />
       </PanelSection>
       {images.length ? (

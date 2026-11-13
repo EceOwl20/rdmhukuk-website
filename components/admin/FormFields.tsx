@@ -21,7 +21,7 @@ export function Field({
         type={type}
         defaultValue={type === "file" ? undefined : defaultValue}
         required={type === "file" ? false : required}
-        accept={type === "file" ? "image/jpeg,image/png,image/webp,image/gif,image/svg+xml" : undefined}
+        accept={type === "file" ? "image/jpeg,image/png,image/webp,image/gif" : undefined}
         className="mt-2 w-full rounded-lg text-xs lg:text-sm border border-slate-300 bg-white px-4 py-3 font-normal outline-none file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#203b61] focus:border-[#EFB059]"
       />
       {hint && <span className="mt-1 block text-xs font-normal text-slate-500">{hint}</span>}

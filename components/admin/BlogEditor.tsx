@@ -21,6 +21,7 @@ import {
 import type { BlogContentBlock, BlogPost } from "@/data/blog";
 import type { StoredImage } from "@/lib/site-content-types";
 import { saveBlogPostAction } from "@/app/yonetim/actions";
+import AdminForm from "@/components/admin/AdminForm";
 
 import {
   Field,
@@ -307,7 +308,7 @@ export default function BlogEditor({
   }
 
   return (
-    <form
+    <AdminForm
       action={saveBlogPostAction}
       className="mx-auto max-w-[1700px] space-y-5 lg:space-y-7 pb-10"
     >
@@ -704,7 +705,7 @@ export default function BlogEditor({
                           name={`blockImage_${index}`}
                           type="file"
                           required={!block.src}
-                          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
                           className="block w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-normal text-slate-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white"
                         />
                       </label>
@@ -867,6 +868,6 @@ export default function BlogEditor({
           {post ? "Değişiklikleri Kaydet" : "Yazıyı Yayınla"}
         </SaveButton>
       </div>
-    </form>
+    </AdminForm>
   );
 }

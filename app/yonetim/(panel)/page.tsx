@@ -25,6 +25,7 @@ import {
 } from "@/app/yonetim/actions";
 
 import ContentImageField from "@/components/admin/ContentImageField";
+import AdminForm from "@/components/admin/AdminForm";
 
 import {
   Field,
@@ -369,7 +370,7 @@ export default async function AdminContentPage({
           href="/"
         />
 
-        <form
+        <AdminForm
           action={updateHomeAction}
           className="space-y-4 sm:space-y-5"
         >
@@ -653,7 +654,7 @@ export default async function AdminContentPage({
           <SaveBar>
             Anasayfayı kaydet
           </SaveBar>
-        </form>
+        </AdminForm>
       </section>
 
       {/* =====================================
@@ -672,7 +673,7 @@ export default async function AdminContentPage({
           href="/iletisim"
         />
 
-        <form
+        <AdminForm
           action={updateContactAction}
           className="space-y-4 sm:space-y-5"
         >
@@ -778,7 +779,7 @@ export default async function AdminContentPage({
           <SaveBar>
             İletişim sayfasını kaydet
           </SaveBar>
-        </form>
+        </AdminForm>
       </section>
     </div>
   );

@@ -24,6 +24,8 @@ import {
 } from "@/lib/task-store";
 import type { TaskPriority } from "@/lib/task-types";
 import type { BlogContentBlock, BlogPost } from "@/data/blog";
+import type { AdminActionState } from "@/lib/admin-action-state";
+import { adminActionErrorState, AdminFormError } from "@/lib/admin-form-error";
 
 function value(formData: FormData, name: string, maxLength = 10_000) {
   return String(formData.get(name) ?? "").trim().slice(0, maxLength);
@@ -31,7 +33,7 @@ function value(formData: FormData, name: string, maxLength = 10_000) {
 
 function required(formData: FormData, name: string, maxLength = 10_000) {
   const result = value(formData, name, maxLength);
-  if (!result) throw new Error(`${name} alanı boş bırakılamaz.`);
+  if (!result) throw new AdminFormError(`${name} alanı boş bırakılamaz.`);
   return result;
 }
 
@@ -74,10 +76,24 @@ function slugify(input: string) {
     .slice(0, 100);
 }
 
+async function runAdminMutation(
+  mutation: () => Promise<string>,
+): Promise<AdminActionState> {
+  let redirectTo: string;
+
+  try {
+    redirectTo = await mutation();
+  } catch (error) {
+    return adminActionErrorState(error);
+  }
+
+  redirect(redirectTo);
+}
+
 async function parseBlogBlocks(formData: FormData): Promise<BlogContentBlock[]> {
   const blockCount = Number(value(formData, "blockCount", 3));
   if (!Number.isInteger(blockCount) || blockCount < 1 || blockCount > 100) {
-    throw new Error("Blog içeriği 1-100 blok arasında olmalıdır.");
+    throw new AdminFormError("Blog içeriği 1-100 blok arasında olmalıdır.");
   }
 
   const blocks: BlogContentBlock[] = [];
@@ -97,7 +113,7 @@ async function parseBlogBlocks(formData: FormData): Promise<BlogContentBlock[]> 
         .map((item) => item.trim())
         .filter(Boolean)
         .slice(0, 100);
-      if (!items.length) throw new Error("Madde listesi boş bırakılamaz.");
+      if (!items.length) throw new AdminFormError("Madde listesi boş bırakılamaz.");
       blocks.push({ type, items });
       continue;
     }
@@ -105,7 +121,7 @@ async function parseBlogBlocks(formData: FormData): Promise<BlogContentBlock[]> 
       const imageFile = fileValue(formData, `blockImage_${index}`);
       const existingImage = storedImageValue(formData, `blockImageUrl_${index}`);
       const src = imageFile ? await saveImage(imageFile) : existingImage;
-      if (!src) throw new Error("Görsel bloğu için bir dosya seçilmelidir.");
+      if (!src) throw new AdminFormError("Görsel bloğu için bir dosya seçilmelidir.");
       blocks.push({
         type,
         src,
@@ -113,7 +129,7 @@ async function parseBlogBlocks(formData: FormData): Promise<BlogContentBlock[]> 
       });
       continue;
     }
-    throw new Error("Geçersiz blog içerik bloğu.");
+    throw new AdminFormError("Geçersiz blog içerik bloğu.");
   }
   return blocks;
 }
@@ -133,7 +149,7 @@ export async function logoutAction() {
   redirect("/yonetim/giris");
 }
 
-export async function updateHomeAction(formData: FormData) {
+async function updateHomeMutation(formData: FormData) {
   await requireAdmin();
   const content = await getSiteContent();
   content.home.servicesTitle = required(formData, "servicesTitle", 100);
@@ -191,10 +207,10 @@ export async function updateHomeAction(formData: FormData) {
 
   await writeSiteContent(content);
   updateTag("site-content");
-  redirect("/yonetim?durum=anasayfa-kaydedildi");
+  return "/yonetim?durum=anasayfa-kaydedildi";
 }
 
-export async function updateContactAction(formData: FormData) {
+async function updateContactMutation(formData: FormData) {
   await requireAdmin();
   const content = await getSiteContent();
   const phone = required(formData, "phone", 80);
@@ -217,18 +233,18 @@ export async function updateContactAction(formData: FormData) {
   else if (heroLibraryImage) content.contact.heroImage = heroLibraryImage;
   await writeSiteContent(content);
   updateTag("site-content");
-  redirect("/yonetim?durum=iletisim-kaydedildi");
+  return "/yonetim?durum=iletisim-kaydedildi";
 }
 
-export async function saveBlogPostAction(formData: FormData) {
+async function saveBlogPostMutation(formData: FormData) {
   await requireAdmin();
   const content = await getSiteContent();
   const id = value(formData, "id", 100) || crypto.randomUUID();
   const title = required(formData, "title", 250);
   const requestedSlug = slugify(value(formData, "slug", 120) || title);
-  if (!requestedSlug) throw new Error("Geçerli bir blog adresi oluşturulamadı.");
+  if (!requestedSlug) throw new AdminFormError("Geçerli bir blog adresi oluşturulamadı.");
   const duplicate = content.blog.posts.find((post) => post.slug === requestedSlug && post.id !== id);
-  if (duplicate) throw new Error("Bu blog adresi başka bir yazıda kullanılıyor.");
+  if (duplicate) throw new AdminFormError("Bu blog adresi başka bir yazıda kullanılıyor.");
 
   const existing = content.blog.posts.find((post) => post.id === id);
   const coverFile = fileValue(formData, "coverImage");
@@ -249,42 +265,42 @@ export async function saveBlogPostAction(formData: FormData) {
     : [post, ...content.blog.posts];
   await writeSiteContent(content);
   updateTag("site-content");
-  redirect("/yonetim/blog?durum=kaydedildi");
+  return "/yonetim/blog?durum=kaydedildi";
 }
 
-export async function deleteBlogPostAction(formData: FormData) {
+async function deleteBlogPostMutation(formData: FormData) {
   await requireAdmin();
   const content = await getSiteContent();
   const id = required(formData, "id", 100);
   content.blog.posts = content.blog.posts.filter((post) => post.id !== id);
   await writeSiteContent(content);
   updateTag("site-content");
-  redirect("/yonetim/blog?durum=silindi");
+  return "/yonetim/blog?durum=silindi";
 }
 
-export async function uploadDocumentAction(formData: FormData) {
+async function uploadDocumentMutation(formData: FormData) {
   await requireAdmin();
   const file = fileValue(formData, "document");
-  if (!file) throw new Error("Belge seçilmedi.");
+  if (!file) throw new AdminFormError("Belge seçilmedi.");
   await addDocument(file);
-  redirect("/yonetim/belgeler?durum=yuklendi");
+  return "/yonetim/belgeler?durum=yuklendi";
 }
 
-export async function uploadLibraryImageAction(formData: FormData) {
+async function uploadLibraryImageMutation(formData: FormData) {
   await requireAdmin();
   const file = fileValue(formData, "image");
-  if (!file) throw new Error("Görsel seçilmedi.");
+  if (!file) throw new AdminFormError("Görsel seçilmedi.");
   await saveImage(file);
-  redirect("/yonetim/gorseller?durum=yuklendi");
+  return "/yonetim/gorseller?durum=yuklendi";
 }
 
-export async function deleteDocumentAction(formData: FormData) {
+async function deleteDocumentMutation(formData: FormData) {
   await requireAdmin();
   await deleteDocumentById(required(formData, "id", 100));
-  redirect("/yonetim/belgeler?durum=silindi");
+  return "/yonetim/belgeler?durum=silindi";
 }
 
-export async function createTaskAction(formData: FormData) {
+async function createTaskMutation(formData: FormData) {
   await requireAdmin();
   await createTask({
     title: required(formData, "title", 200),
@@ -294,10 +310,10 @@ export async function createTaskAction(formData: FormData) {
     dueAt: taskDateTimeValue(formData, "dueAt"),
     reminderAt: taskDateTimeValue(formData, "reminderAt"),
   });
-  redirect("/yonetim/gorevler?durum=eklendi");
+  return "/yonetim/gorevler?durum=eklendi";
 }
 
-export async function updateTaskAction(formData: FormData) {
+async function updateTaskMutation(formData: FormData) {
   await requireAdmin();
   await updateTask(required(formData, "id", 100), {
     title: required(formData, "title", 200),
@@ -307,20 +323,97 @@ export async function updateTaskAction(formData: FormData) {
     dueAt: taskDateTimeValue(formData, "dueAt"),
     reminderAt: taskDateTimeValue(formData, "reminderAt"),
   });
-  redirect("/yonetim/gorevler?durum=guncellendi");
+  return "/yonetim/gorevler?durum=guncellendi";
 }
 
-export async function toggleTaskAction(formData: FormData) {
+async function toggleTaskMutation(formData: FormData) {
   await requireAdmin();
   await setTaskCompleted(
     required(formData, "id", 100),
     value(formData, "completed", 10) === "true",
   );
-  redirect("/yonetim/gorevler?durum=durum-guncellendi");
+  return "/yonetim/gorevler?durum=durum-guncellendi";
 }
 
-export async function deleteTaskAction(formData: FormData) {
+async function deleteTaskMutation(formData: FormData) {
   await requireAdmin();
   await deleteTask(required(formData, "id", 100));
-  redirect("/yonetim/gorevler?durum=silindi");
+  return "/yonetim/gorevler?durum=silindi";
+}
+
+export async function updateHomeAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => updateHomeMutation(formData));
+}
+
+export async function updateContactAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => updateContactMutation(formData));
+}
+
+export async function saveBlogPostAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => saveBlogPostMutation(formData));
+}
+
+export async function deleteBlogPostAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => deleteBlogPostMutation(formData));
+}
+
+export async function uploadDocumentAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => uploadDocumentMutation(formData));
+}
+
+export async function uploadLibraryImageAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => uploadLibraryImageMutation(formData));
+}
+
+export async function deleteDocumentAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => deleteDocumentMutation(formData));
+}
+
+export async function createTaskAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => createTaskMutation(formData));
+}
+
+export async function updateTaskAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => updateTaskMutation(formData));
+}
+
+export async function toggleTaskAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => toggleTaskMutation(formData));
+}
+
+export async function deleteTaskAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => deleteTaskMutation(formData));
 }

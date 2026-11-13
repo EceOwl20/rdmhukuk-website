@@ -7,6 +7,7 @@ import {
   updateTaskAction,
 } from "@/app/yonetim/actions";
 import NotificationPermissionButton from "@/components/admin/NotificationPermissionButton";
+import AdminForm from "@/components/admin/AdminForm";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getTasks } from "@/lib/task-store";
 import type { Task } from "@/lib/task-types";
@@ -136,7 +137,7 @@ function TaskCard({ task }: { task: Task }) {
   return (
     <article className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${completed ? "border-slate-200 opacity-75" : "border-slate-200"}`}>
       <div className="flex items-start gap-3 sm:gap-4">
-        <form action={toggleTaskAction} className="shrink-0">
+        <AdminForm action={toggleTaskAction} className="shrink-0">
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="completed" value={completed ? "false" : "true"} />
           <button
@@ -146,7 +147,7 @@ function TaskCard({ task }: { task: Task }) {
           >
             ✓
           </button>
-        </form>
+        </AdminForm>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +173,7 @@ function TaskCard({ task }: { task: Task }) {
             Düzenle
           </summary>
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:min-w-[520px]">
-            <form action={updateTaskAction} className="space-y-4">
+            <AdminForm action={updateTaskAction} className="space-y-4">
               <input type="hidden" name="id" value={task.id} />
               <TaskFields task={task} />
               <div className="flex justify-end">
@@ -180,15 +181,15 @@ function TaskCard({ task }: { task: Task }) {
                   Değişiklikleri kaydet
                 </button>
               </div>
-            </form>
+            </AdminForm>
           </div>
         </details>
-        <form action={deleteTaskAction} className="w-auto">
+        <AdminForm action={deleteTaskAction} className="w-auto">
           <input type="hidden" name="id" value={task.id} />
           <button className="w-full rounded-lg border border-red-200 px-3 py-2 lg:px-4 lg:py-2.5 text-xs lg:text-sm font-semibold text-red-700 hover:bg-red-50">
             Sil
           </button>
-        </form>
+        </AdminForm>
       </div>
     </article>
   );
@@ -229,14 +230,14 @@ async function TasksContent({ searchParams }: { searchParams: Promise<{ durum?: 
           </span>
           <span className="flex h-8 lg:h-10 w-8 lg:w-10 shrink-0 items-center justify-center rounded-full bg-[#152741] text-2xl text-white transition group-open:rotate-45">+</span>
         </summary>
-        <form action={createTaskAction} className="space-y-5 border-t border-slate-100 px-5 py-6 sm:px-7">
+        <AdminForm action={createTaskAction} className="space-y-5 border-t border-slate-100 px-5 py-6 sm:px-7">
           <TaskFields />
           <div className="flex justify-end">
             <button className="w-full rounded-lg bg-[#152741] px-6 py-3 font-semibold text-white transition hover:bg-[#203b61] sm:w-auto">
               Görevi kaydet
             </button>
           </div>
-        </form>
+        </AdminForm>
       </details>
 
       <section className="space-y-4">

@@ -6,6 +6,7 @@ import path from "node:path";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { defaultSiteContent } from "@/lib/default-site-content";
+import { AdminFormError } from "@/lib/admin-form-error";
 import type { SiteContent, StoredDocument, StoredImage } from "@/lib/site-content-types";
 
 const storageRoot = path.resolve(
@@ -150,11 +151,10 @@ export async function saveImage(file: File): Promise<string> {
     ["image/png", ".png"],
     ["image/webp", ".webp"],
     ["image/gif", ".gif"],
-    ["image/svg+xml", ".svg"],
   ]);
   const extension = allowedTypes.get(file.type);
-  if (!extension) throw new Error("Yalnızca JPG, PNG, WebP, GIF veya SVG yüklenebilir.");
-  if (file.size > 8 * 1024 * 1024) throw new Error("Görsel en fazla 8 MB olabilir.");
+  if (!extension) throw new AdminFormError("Yalnızca JPG, PNG, WebP veya GIF yüklenebilir.");
+  if (file.size > 8 * 1024 * 1024) throw new AdminFormError("Görsel en fazla 8 MB olabilir.");
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const sha256 = createHash("sha256").update(buffer).digest("hex");
@@ -185,8 +185,8 @@ export async function saveImage(file: File): Promise<string> {
 }
 
 export async function addDocument(file: File): Promise<StoredDocument> {
-  if (!file.size) throw new Error("Belge seçilmedi.");
-  if (file.size > 25 * 1024 * 1024) throw new Error("Belge en fazla 25 MB olabilir.");
+  if (!file.size) throw new AdminFormError("Belge seçilmedi.");
+  if (file.size > 25 * 1024 * 1024) throw new AdminFormError("Belge en fazla 25 MB olabilir.");
 
   const safeExtension = path.extname(file.name).toLocaleLowerCase("tr-TR").replace(/[^.a-z0-9]/g, "").slice(0, 10);
   const document: StoredDocument = {

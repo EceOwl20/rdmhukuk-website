@@ -1,4 +1,5 @@
 import { deleteDocumentAction, uploadDocumentAction } from "@/app/yonetim/actions";
+import AdminForm from "@/components/admin/AdminForm";
 import { PanelSection, SaveButton } from "@/components/admin/FormFields";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getDocuments } from "@/lib/content-store";
@@ -15,10 +16,10 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
       </div>
       {params.durum && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">İşlem başarıyla tamamlandı.</p>}
       <PanelSection title="Yeni belge yükle" description="Dosya başına en fazla 25 MB.">
-        <form action={uploadDocumentAction} className="flex flex-wrap items-end gap-4">
+        <AdminForm action={uploadDocumentAction} className="flex flex-wrap items-end gap-4">
           <label className="min-w-[260px] flex-1 text-sm font-semibold">Belge<input name="document" type="file" required className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 lg:px-4 py-2 lg:py-3 font-normal file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#203b61]" /></label>
           <SaveButton>Belgeyi yükle</SaveButton>
-        </form>
+        </AdminForm>
       </PanelSection>
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
         {documents.length ? documents.map((document) => (
@@ -30,7 +31,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
               </div>
               <div className="flex gap-2">
                 <a href={`/api/yonetim/belgeler/${document.id}`} className="rounded-lg border border-slate-300 px-3 text-sm lg:px-4 py-2 lg:text-sm font-semibold">İndir</a>
-                <form action={deleteDocumentAction}><input type="hidden" name="id" value={document.id} /><button className="rounded-lg border border-red-200 px-3 text-sm lg:px-4 py-2 lg:text-sm font-semibold text-red-700">Sil</button></form>
+                <AdminForm action={deleteDocumentAction}><input type="hidden" name="id" value={document.id} /><button className="rounded-lg border border-red-200 px-3 text-sm lg:px-4 py-2 lg:text-sm font-semibold text-red-700">Sil</button></AdminForm>
               </div>
             </div>
             {(document.mimeType === "application/pdf" || document.name.toLocaleLowerCase("tr-TR").endsWith(".pdf")) && (

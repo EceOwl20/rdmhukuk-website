@@ -14,11 +14,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pat
   const file = await getPublicImageFile(path);
   if (!file) return new Response("Dosya bulunamadı.", { status: 404 });
   const extension = path.at(-1)?.split(".").pop()?.toLowerCase() ?? "";
+  const isLegacySvg = extension === "svg";
   return new Response(file, {
     headers: {
       "Content-Type": contentTypes[extension] || "application/octet-stream",
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
+      ...(isLegacySvg
+        ? {
+            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:",
+          }
+        : {}),
     },
   });
 }

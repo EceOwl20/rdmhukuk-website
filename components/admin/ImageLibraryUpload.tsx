@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { FiCheck, FiImage, FiUploadCloud } from "react-icons/fi";
 
 import { uploadLibraryImageAction } from "@/app/yonetim/actions";
+import AdminForm from "@/components/admin/AdminForm";
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -13,7 +14,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
   "image/png",
   "image/webp",
   "image/gif",
-  "image/svg+xml",
 ]);
 
 function formatFileSize(size: number) {
@@ -68,7 +68,7 @@ export default function ImageLibraryUpload() {
     if (!candidate) return false;
     if (!ALLOWED_IMAGE_TYPES.has(candidate.type)) {
       clearSelectedFile();
-      setError("Yalnızca JPG, PNG, WebP, GIF veya SVG seçebilirsiniz.");
+      setError("Yalnızca JPG, PNG, WebP veya GIF seçebilirsiniz.");
       return false;
     }
     if (candidate.size > MAX_IMAGE_SIZE) {
@@ -102,13 +102,13 @@ export default function ImageLibraryUpload() {
   };
 
   return (
-    <form action={uploadLibraryImageAction} className="space-y-4">
+    <AdminForm action={uploadLibraryImageAction} className="space-y-4">
       <input
         ref={inputRef}
         id="library-image-upload"
         name="image"
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         required
         className="sr-only"
         onClick={(event) => { event.currentTarget.value = ""; }}
@@ -153,7 +153,7 @@ export default function ImageLibraryUpload() {
             <strong className="mt-3 text-sm text-[#152741] sm:text-base">Görsel seçin</strong>
             <span className="mt-1 text-xs leading-5 text-slate-500">Dokunun veya dosyayı buraya sürükleyip bırakın</span>
             <span className="mt-3 rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 shadow-sm">
-              JPG · PNG · WebP · GIF · SVG · En fazla 8 MB
+              JPG · PNG · WebP · GIF · En fazla 8 MB
             </span>
           </div>
         )}
@@ -164,6 +164,6 @@ export default function ImageLibraryUpload() {
       <div className="flex justify-end">
         <UploadButton hasFile={Boolean(file)} />
       </div>
-    </form>
+    </AdminForm>
   );
 }

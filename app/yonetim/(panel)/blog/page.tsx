@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { deleteBlogPostAction } from "@/app/yonetim/actions";
+import AdminForm from "@/components/admin/AdminForm";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getSiteContent } from "@/lib/content-store";
 
@@ -26,10 +27,10 @@ export default async function AdminBlogPage({ searchParams }: { searchParams: Pr
             </div>
             <div className="flex gap-2">
               <Link href={`/yonetim/blog/${post.id}`} className="rounded-lg border border-slate-300 px-4 py-2 text-xs lg:text-sm font-semibold">Düzenle</Link>
-              <form action={deleteBlogPostAction}>
+              <AdminForm action={deleteBlogPostAction}>
                 <input type="hidden" name="id" value={post.id} />
                 <button className="rounded-lg border border-red-200 px-4 py-2 text-xs lg:text-sm font-semibold text-red-700">Sil</button>
-              </form>
+              </AdminForm>
             </div>
           </article>
         )) : <p className="p-8 text-slate-500">Henüz blog yazısı bulunmuyor.</p>}

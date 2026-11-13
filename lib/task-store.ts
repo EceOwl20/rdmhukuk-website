@@ -13,6 +13,7 @@ import {
   type TaskStatus,
   type UpdateTaskInput,
 } from "@/lib/task-types";
+import { AdminFormError } from "@/lib/admin-form-error";
 
 const TASK_STORE_VERSION = 1 as const;
 const storageRoot = path.resolve(
@@ -117,9 +118,9 @@ function runTaskMutation<T>(operation: () => Promise<T>): Promise<T> {
 
 function requiredText(value: string, label: string, maxLength: number): string {
   const normalized = value.trim();
-  if (!normalized) throw new Error(`${label} boş bırakılamaz.`);
+  if (!normalized) throw new AdminFormError(`${label} boş bırakılamaz.`);
   if (normalized.length > maxLength) {
-    throw new Error(`${label} en fazla ${maxLength} karakter olabilir.`);
+    throw new AdminFormError(`${label} en fazla ${maxLength} karakter olabilir.`);
   }
   return normalized;
 }
@@ -128,7 +129,7 @@ function optionalText(value: string | undefined, label: string, maxLength: numbe
   if (value === undefined) return "";
   const normalized = value.trim();
   if (normalized.length > maxLength) {
-    throw new Error(`${label} en fazla ${maxLength} karakter olabilir.`);
+    throw new AdminFormError(`${label} en fazla ${maxLength} karakter olabilir.`);
   }
   return normalized;
 }
@@ -136,13 +137,13 @@ function optionalText(value: string | undefined, label: string, maxLength: numbe
 function optionalDate(value: string | null | undefined, label: string): string | null {
   if (value === undefined || value === null || !value.trim()) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new Error(`${label} geçerli bir tarih olmalıdır.`);
+  if (Number.isNaN(date.getTime())) throw new AdminFormError(`${label} geçerli bir tarih olmalıdır.`);
   return date.toISOString();
 }
 
 function normalizePriority(value: TaskPriority | undefined): TaskPriority {
   if (value === undefined) return "normal";
-  if (!isTaskPriority(value)) throw new Error("Geçersiz görev önceliği.");
+  if (!isTaskPriority(value)) throw new AdminFormError("Geçersiz görev önceliği.");
   return value;
 }
 
@@ -193,7 +194,7 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ta
   return runTaskMutation(async () => {
     const store = await readTaskStore();
     const taskIndex = store.tasks.findIndex((item) => item.id === id);
-    if (taskIndex === -1) throw new Error("Görev bulunamadı.");
+    if (taskIndex === -1) throw new AdminFormError("Görev bulunamadı.");
 
     const current = store.tasks[taskIndex];
     const updated: Task = {
@@ -230,7 +231,7 @@ export async function setTaskCompleted(id: string, completed: boolean): Promise<
   return runTaskMutation(async () => {
     const store = await readTaskStore();
     const taskIndex = store.tasks.findIndex((item) => item.id === id);
-    if (taskIndex === -1) throw new Error("Görev bulunamadı.");
+    if (taskIndex === -1) throw new AdminFormError("Görev bulunamadı.");
 
     const now = new Date().toISOString();
     const updated: Task = {
