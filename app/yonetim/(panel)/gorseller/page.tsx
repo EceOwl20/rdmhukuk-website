@@ -7,16 +7,16 @@ import { getImages } from "@/lib/content-store";
 export default async function ImagesPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   const [images, params] = await Promise.all([getImages(), searchParams]);
   return (
-    <div className="mx-auto max-w-7xl space-y-7">
+    <div className="mx-auto max-w-7xl space-y-6 lg:space-y-7">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Medya kütüphanesi</p>
-        <h1 className="mt-2 text-3xl font-bold">Görseller</h1>
-        <p className="mt-2 text-sm text-slate-500">Sitenin mevcut görselleri ve sonradan yüklenen dosyalar burada birlikte saklanır. Önceki görsellere istediğiniz zaman geri dönebilirsiniz.</p>
+        <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Medya kütüphanesi</p>
+        <h1 className="mt-1 lg:mt-2 text-2xl lg:text-3xl font-bold">Görseller</h1>
+        <p className="mt-1 lg:mt-2 text-xs lg:text-sm text-slate-500">Sitenin mevcut görselleri ve sonradan yüklenen dosyalar burada birlikte saklanır. Önceki görsellere istediğiniz zaman geri dönebilirsiniz.</p>
       </div>
       {params.durum && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Görsel kütüphaneye eklendi.</p>}
       <PanelSection title="Yeni görsel yükle" description="JPG, PNG, WebP, GIF veya SVG; en fazla 8 MB. Aynı dosya yeniden yüklenirse mevcut kayıt kullanılır.">
         <form action={uploadLibraryImageAction} className="flex flex-wrap items-end gap-4">
-          <label className="min-w-[260px] flex-1 text-sm font-semibold">Görsel<input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" required className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3 font-normal file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#203b61]" /></label>
+          <label className="min-w-[260px] flex-1 text-sm font-semibold">Görsel<input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" required className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 lg:px-4 lg:py-3 font-normal file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-[#152741] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#203b61]" /></label>
           <SaveButton>Görseli yükle</SaveButton>
         </form>
       </PanelSection>

@@ -10,7 +10,6 @@ import {
   FiChevronRight,
   FiClipboard,
   FiExternalLink,
-  FiFileText,
   FiFolder,
   FiGrid,
   FiImage,
@@ -55,7 +54,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="relative z-40 w-full shrink-0 bg-[#152741] text-white lg:flex lg:min-h-screen lg:w-[280px] lg:flex-col lg:border-r lg:border-white/10">
+    <aside className="relative z-40 hidden shrink-0 bg-[#152741] text-white lg:flex lg:min-h-screen lg:w-[280px] lg:flex-col lg:border-r lg:border-white/10">
       {/* BRAND HEADER */}
       <div className="flex h-[76px] items-center justify-between border-b border-white/10 px-5 lg:h-auto lg:px-6 lg:pb-7 lg:pt-8">
         <Link

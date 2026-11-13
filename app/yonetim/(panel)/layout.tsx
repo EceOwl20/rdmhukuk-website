@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import MobileAdminHeader from "@/components/admin/MobileAdminHeader";
 import MobileAdminNav from "@/components/admin/MobileAdminNav";
 import TaskNotificationScheduler from "@/components/admin/TaskNotificationScheduler";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -10,7 +11,10 @@ async function ProtectedPanel({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#eef2f6] text-[#152741] lg:flex">
       <AdminSidebar />
-      <div className="min-w-0 flex-1 p-4 pb-28 sm:p-5 sm:pb-28 md:p-8 md:pb-28 lg:p-12">{children}</div>
+      <div className="min-w-0 flex-1">
+        <MobileAdminHeader />
+        <div className="p-4 pb-28 sm:p-5 sm:pb-28 md:p-8 md:pb-28 lg:p-12">{children}</div>
+      </div>
       <TaskNotificationScheduler />
       <MobileAdminNav />
     </div>

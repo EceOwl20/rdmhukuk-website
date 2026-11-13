@@ -11,7 +11,7 @@ export default async function AdminBlogPage({ searchParams }: { searchParams: Pr
           <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">İçerik yönetimi</p>
           <h1 className="mt-2 text-3xl font-bold">Blog Yazıları</h1>
         </div>
-        <Link href="/yonetim/blog/yeni" className="rounded-lg bg-[#152741] px-5 py-3 font-semibold text-white">Yeni yazı ekle</Link>
+        <Link href="/yonetim/blog/yeni" className="rounded-lg bg-[#152741] px-3 lg:px-5 py-2 lg:py-3 font-semibold text-white text-xs md:text-sm lg:text-md">+ Yeni yazı ekle</Link>
       </div>
       {params.durum && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">İşlem başarıyla tamamlandı.</p>}
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -23,10 +23,10 @@ export default async function AdminBlogPage({ searchParams }: { searchParams: Pr
               <p className="mt-1 text-xs text-slate-500">/blog/{post.slug}</p>
             </div>
             <div className="flex gap-2">
-              <Link href={`/yonetim/blog/${post.id}`} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Düzenle</Link>
+              <Link href={`/yonetim/blog/${post.id}`} className="rounded-lg border border-slate-300 px-4 py-2 text-xs lg:text-sm font-semibold">Düzenle</Link>
               <form action={deleteBlogPostAction}>
                 <input type="hidden" name="id" value={post.id} />
-                <button className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700">Sil</button>
+                <button className="rounded-lg border border-red-200 px-4 py-2 text-xs lg:text-sm font-semibold text-red-700">Sil</button>
               </form>
             </div>
           </article>

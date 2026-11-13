@@ -67,10 +67,10 @@ export function PanelSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm md:p-7">
+    <section className="rounded-2xl bg-white p-4 shadow-sm md:p-7">
       <div className="mb-6 border-l-4 border-[#EFB059] pl-4">
-        <h2 className="text-xl font-bold text-[#152741]">{title}</h2>
-        {description && <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>}
+        <h2 className="text-lg lg:text-xl font-bold text-[#152741]">{title}</h2>
+        {description && <p className="mt-1 text-xs lg:text-sm leading-4 lg:leading-6 text-slate-500">{description}</p>}
       </div>
       {children}
     </section>
@@ -78,5 +78,5 @@ export function PanelSection({
 }
 
 export function SaveButton({ children = "Değişiklikleri kaydet" }: { children?: React.ReactNode }) {
-  return <button className="rounded-lg bg-[#152741] px-6 py-3 font-semibold text-white transition hover:bg-[#203b61]">{children}</button>;
+  return <button className="rounded-lg bg-[#152741] px-4 py-2 lg:px-6 lg:py-3 text-sm lg:text-md font-semibold text-white transition hover:bg-[#203b61]">{children}</button>;
 }

@@ -142,7 +142,7 @@ function TaskCard({ task }: { task: Task }) {
           <button
             type="submit"
             title={completed ? "Görevi yeniden aç" : "Tamamlandı olarak işaretle"}
-            className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-full border-2 text-lg font-bold transition ${completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white text-transparent hover:border-emerald-500"}`}
+            className={`mt-0.5 flex h-8 lg:h-10 w-8 lg:w-10 items-center justify-center rounded-full border-2 text-lg font-bold transition ${completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white text-transparent hover:border-emerald-500"}`}
           >
             ✓
           </button>
@@ -150,15 +150,15 @@ function TaskCard({ task }: { task: Task }) {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className={`break-words text-base font-bold sm:text-lg ${completed ? "text-slate-500 line-through" : "text-[#152741]"}`}>
+            <h2 className={`font-mont break-words text-base font-bold sm:text-lg lg:text-xl ${completed ? "text-slate-500 line-through" : "text-[#152741]"}`}>
               {task.title}
             </h2>
             <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${priorityStyles[task.priority]}`}>
               {priorityLabels[task.priority]}
             </span>
           </div>
-          {task.description && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description}</p>}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-500">
+          {task.description && <p className="mt-1 lg:mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description}</p>}
+          <div className="mt-2 lg:mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-500">
             {task.category && <span>#{task.category}</span>}
             {task.dueAt && <span>Son tarih: {displayDate(task.dueAt)}</span>}
             {task.reminderAt && <span>Hatırlatma: {displayDate(task.reminderAt)}</span>}
@@ -167,8 +167,8 @@ function TaskCard({ task }: { task: Task }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-4">
-        <details className="group w-full sm:w-auto">
-          <summary className="cursor-pointer list-none rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-[#152741] marker:hidden hover:bg-slate-50">
+        <details className="group w-auto">
+          <summary className="cursor-pointer list-none rounded-lg border border-slate-300 px-3 py-2 lg:px-4 lg:py-2.5 text-center text-xs lg:text-sm font-semibold text-[#152741] marker:hidden hover:bg-slate-50">
             Düzenle
           </summary>
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:min-w-[520px]">
@@ -183,9 +183,9 @@ function TaskCard({ task }: { task: Task }) {
             </form>
           </div>
         </details>
-        <form action={deleteTaskAction} className="w-full sm:w-auto">
+        <form action={deleteTaskAction} className="w-auto">
           <input type="hidden" name="id" value={task.id} />
-          <button className="w-full rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50">
+          <button className="w-full rounded-lg border border-red-200 px-3 py-2 lg:px-4 lg:py-2.5 text-xs lg:text-sm font-semibold text-red-700 hover:bg-red-50">
             Sil
           </button>
         </form>
@@ -201,12 +201,12 @@ async function TasksContent({ searchParams }: { searchParams: Promise<{ durum?: 
   const completedTasks = tasks.filter((task) => task.status === "completed");
 
   return (
-    <div className="mx-auto max-w-7xl space-y-7">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mx-auto max-w-7xl space-y-6 lg:space-y-7">
+      <div className="flex flex-col gap-4 lg:gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Panel içi çalışma alanı</p>
-          <h1 className="mt-2 text-3xl font-bold">Görevler ve İşler</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Panel içi çalışma alanı</p>
+          <h1 className="mt-2 text-2xl lg:text-3xl font-bold">Görevler ve İşler</h1>
+          <p className="mt-2 max-w-2xl text-xs lg:text-sm leading-4 lg:leading-6 text-slate-500">
             Yapılacak işleri kaydedin, son tarih belirleyin ve tamamlandıklarında işaretleyin.
           </p>
         </div>
@@ -224,10 +224,10 @@ async function TasksContent({ searchParams }: { searchParams: Promise<{ durum?: 
       <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 marker:hidden sm:px-7">
           <span>
-            <strong className="block text-lg text-[#152741]">Yeni görev ekle</strong>
-            <span className="mt-1 block text-sm font-normal text-slate-500">Başlık, öncelik ve isteğe bağlı son tarih belirleyin.</span>
+            <strong className="block text-md lg:text-lg text-[#152741]">Yeni görev ekle</strong>
+            <span className="mt-1 block text-xs lg:text-sm font-normal text-slate-500">Başlık, öncelik ve isteğe bağlı son tarih belirleyin.</span>
           </span>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#152741] text-2xl text-white transition group-open:rotate-45">+</span>
+          <span className="flex h-8 lg:h-10 w-8 lg:w-10 shrink-0 items-center justify-center rounded-full bg-[#152741] text-2xl text-white transition group-open:rotate-45">+</span>
         </summary>
         <form action={createTaskAction} className="space-y-5 border-t border-slate-100 px-5 py-6 sm:px-7">
           <TaskFields />
