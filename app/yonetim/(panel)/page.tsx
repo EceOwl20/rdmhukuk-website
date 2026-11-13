@@ -40,7 +40,7 @@ export default async function AdminContentPage({
   const { home, contact } = content;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
       <header className="overflow-hidden rounded-2xl bg-[#152741] px-6 py-7 text-white shadow-lg md:px-9 md:py-9">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#EFB059]">İçerik yönetimi</p>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-5">

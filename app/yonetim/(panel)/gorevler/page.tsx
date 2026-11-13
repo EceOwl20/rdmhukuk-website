@@ -6,6 +6,7 @@ import {
   toggleTaskAction,
   updateTaskAction,
 } from "@/app/yonetim/actions";
+import NotificationPermissionButton from "@/components/admin/NotificationPermissionButton";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getTasks } from "@/lib/task-store";
 import type { Task } from "@/lib/task-types";
@@ -84,14 +85,29 @@ function TaskFields({ task }: { task?: Task }) {
           placeholder="Örn. Müvekkil, ofis"
         />
       </label>
-      <label className="block text-sm font-semibold text-[#152741]">
-        Öncelik
-        <select name="priority" defaultValue={task?.priority ?? "normal"} className={inputClassName}>
-          <option value="low">Düşük</option>
-          <option value="normal">Normal</option>
-          <option value="high">Yüksek</option>
-        </select>
-      </label>
+      <fieldset className="block text-sm font-semibold text-[#152741]">
+        <legend>Öncelik</legend>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {([
+            ["low", "Düşük"],
+            ["normal", "Normal"],
+            ["high", "Yüksek"],
+          ] as const).map(([value, label]) => (
+            <label key={value} className="cursor-pointer">
+              <input
+                type="radio"
+                name="priority"
+                value={value}
+                defaultChecked={(task?.priority ?? "normal") === value}
+                className="peer sr-only"
+              />
+              <span className="flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-center font-medium text-slate-600 transition peer-checked:border-[#152741] peer-checked:bg-[#152741] peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#EFB059]">
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="block text-sm font-semibold text-[#152741]">
         Son tarih
         <input
@@ -185,13 +201,18 @@ async function TasksContent({ searchParams }: { searchParams: Promise<{ durum?: 
   const completedTasks = tasks.filter((task) => task.status === "completed");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Panel içi çalışma alanı</p>
-        <h1 className="mt-2 text-3xl font-bold">Görevler ve İşler</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Yapılacak işleri kaydedin, son tarih belirleyin ve tamamlandıklarında işaretleyin.
-        </p>
+    <div className="mx-auto max-w-7xl space-y-7">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Panel içi çalışma alanı</p>
+          <h1 className="mt-2 text-3xl font-bold">Görevler ve İşler</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Yapılacak işleri kaydedin, son tarih belirleyin ve tamamlandıklarında işaretleyin.
+          </p>
+        </div>
+        <div className="shrink-0 sm:max-w-sm">
+          <NotificationPermissionButton />
+        </div>
       </div>
 
       {params.durum && (
@@ -251,7 +272,7 @@ async function TasksContent({ searchParams }: { searchParams: Promise<{ durum?: 
 
 export default function TasksPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-6xl text-sm text-slate-500">Görevler yükleniyor…</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-7xl text-sm text-slate-500">Görevler yükleniyor…</div>}>
       <TasksContent searchParams={searchParams} />
     </Suspense>
   );

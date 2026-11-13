@@ -5,7 +5,7 @@ import { getSiteContent } from "@/lib/content-store";
 export default async function AdminBlogPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   const [content, params] = await Promise.all([getSiteContent(), searchParams]);
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
+    <div className="mx-auto max-w-7xl space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">İçerik yönetimi</p>

@@ -7,7 +7,7 @@ import { getImages } from "@/lib/content-store";
 export default async function ImagesPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   const [images, params] = await Promise.all([getImages(), searchParams]);
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
+    <div className="mx-auto max-w-7xl space-y-7">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.15em] text-[#D79B43]">Medya kütüphanesi</p>
         <h1 className="mt-2 text-3xl font-bold">Görseller</h1>
