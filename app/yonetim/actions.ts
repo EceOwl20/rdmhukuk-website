@@ -15,6 +15,7 @@ import {
   getSiteContent,
   saveImage,
   writeSiteContent,
+  deleteImageById,
 } from "@/lib/content-store";
 import {
   createTask,
@@ -300,6 +301,16 @@ async function deleteDocumentMutation(formData: FormData) {
   return "/yonetim/belgeler?durum=silindi";
 }
 
+async function deleteImageMutation(formData: FormData) {
+  await requireAdmin();
+
+  const id = required(formData, "id", 100);
+
+  await deleteImageById(id);
+
+  return "/yonetim/gorseller?durum=silindi";
+}
+
 async function createTaskMutation(formData: FormData) {
   await requireAdmin();
   await createTask({
@@ -416,4 +427,11 @@ export async function deleteTaskAction(
   formData: FormData,
 ) {
   return runAdminMutation(() => deleteTaskMutation(formData));
+}
+
+export async function deleteImageAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+) {
+  return runAdminMutation(() => deleteImageMutation(formData));
 }

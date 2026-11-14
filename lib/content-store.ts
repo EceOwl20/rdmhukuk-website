@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat,lstat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -183,6 +183,229 @@ export async function saveImage(file: File): Promise<string> {
   ]);
   return url;
 }
+
+
+/* -----------------------------------------
+   DELETE UPLOADED IMAGE
+----------------------------------------- */
+
+export async function deleteImageById(id: string) {
+  await ensureStorage();
+
+  // 1. Görseli kayıtlı ID üzerinden bul.
+  const images = await getImages();
+  const image = images.find((item) => item.id === id);
+
+  if (!image) {
+    throw new AdminFormError("Silinecek görsel bulunamadı.");
+  }
+
+  // 2. Site görsellerinin silinmesini engelle.
+  if (image.source !== "upload") {
+    throw new AdminFormError(
+      "Siteye ait varsayılan görseller silinemez."
+    );
+  }
+
+  // 3. Yalnızca uygulamanın oluşturduğu dosya
+  // isimlerinin silinmesine izin ver.
+  const validStoredName =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/i.test(
+      image.storedName
+    );
+
+  if (!validStoredName) {
+    throw new AdminFormError(
+      "Görsel dosyasının adı güvenli değil."
+    );
+  }
+
+  const expectedUrl = `/uploads/images/${image.storedName}`;
+
+  if (image.url !== expectedUrl) {
+    throw new AdminFormError(
+      "Görselin dosya yolu doğrulanamadı."
+    );
+  }
+
+  // 4. Aynı dosyayı işaret eden başka kayıt
+  // bulunuyorsa silme.
+  const hasAnotherReference = images.some(
+    (item) =>
+      item.id !== image.id &&
+      (item.url === image.url ||
+        item.storedName === image.storedName)
+  );
+
+  if (hasAnotherReference) {
+    throw new AdminFormError(
+      "Bu görsel başka bir medya kaydıyla ilişkili."
+    );
+  }
+
+  // 5. Cache yerine doğrudan güncel içerik
+  // dosyasını oku.
+  let content: SiteContent;
+
+  try {
+    content = JSON.parse(
+      await readFile(contentFile, "utf8")
+    ) as SiteContent;
+  } catch (error) {
+    if (
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      content = structuredClone(defaultSiteContent);
+    } else {
+      throw new AdminFormError(
+        "Site içerikleri kontrol edilemedi. Görsel silinmedi."
+      );
+    }
+  }
+
+  const { home, contact, blog } = content;
+
+  // 6. Ana sayfa ve iletişim görselleri.
+  const pageImages = [
+    home.heroDesktopImage,
+    home.heroMobileImage,
+    home.about.desktopImage,
+    home.about.mobileImage,
+    home.staff.image,
+    contact.heroImage,
+  ];
+
+  const usedOnPage = pageImages.includes(image.url);
+
+  // 7. Blog kapakları ve blog içerik blokları.
+  const usedInBlog = blog.posts.some((post) => {
+    if (post.coverImage === image.url) {
+      return true;
+    }
+
+    return post.content.some(
+      (block) =>
+        "type" in block &&
+        block.type === "image" &&
+        block.src === image.url
+    );
+  });
+
+  if (usedOnPage || usedInBlog) {
+    throw new AdminFormError(
+      "Bu görsel şu anda bir sayfada veya blog yazısında kullanılıyor. Önce ilgili içerikteki görseli değiştirin."
+    );
+  }
+
+  // 8. Dosyanın gerçek konumunu doğrula.
+  const filePath = path.resolve(
+    imagesDirectory,
+    image.storedName
+  );
+
+  if (
+    path.dirname(filePath) !== imagesDirectory
+  ) {
+    throw new AdminFormError(
+      "Görselin dosya konumu geçersiz."
+    );
+  }
+
+  let fileInfo;
+
+  try {
+    fileInfo = await lstat(filePath);
+  } catch {
+    throw new AdminFormError(
+      "Görsel dosyası sunucuda bulunamadı."
+    );
+  }
+
+  if (
+    !fileInfo.isFile() ||
+    fileInfo.isSymbolicLink()
+  ) {
+    throw new AdminFormError(
+      "Yalnızca normal görsel dosyaları silinebilir."
+    );
+  }
+
+  // 9. JSON kaydını doğrudan oku.
+  // Orphan görseller images.json içinde
+  // bulunmayabileceği için getImages() listesini
+  // doğrudan JSON'a yazmıyoruz.
+  let savedImages: StoredImage[] = [];
+
+  try {
+    savedImages = JSON.parse(
+      await readFile(imagesFile, "utf8")
+    ) as StoredImage[];
+  } catch (error) {
+    if (
+      (error as NodeJS.ErrnoException).code !== "ENOENT"
+    ) {
+      throw new AdminFormError(
+        "Medya kayıtları okunamadı. Görsel silinmedi."
+      );
+    }
+  }
+
+  const remainingImages = savedImages.filter(
+    (item) =>
+      item.id !== image.id &&
+      item.storedName !== image.storedName
+  );
+
+  // 10. Dosyayı önce geçici bir konuma taşı.
+  // Böylece JSON güncellemesi başarısız olursa
+  // dosyayı geri getirebiliriz.
+  const temporaryPath = path.join(
+    dataDirectory,
+    `${randomUUID()}.pending-delete`
+  );
+
+  try {
+    await rename(filePath, temporaryPath);
+  } catch {
+    throw new AdminFormError(
+      "Görsel dosyası silinmek üzere taşınamadı."
+    );
+  }
+
+  // 11. Görsel kütüphanesinden kaydı çıkar.
+  try {
+    await writeJsonAtomic(
+      imagesFile,
+      remainingImages
+    );
+  } catch (error) {
+    try {
+      await rename(temporaryPath, filePath);
+    } catch (rollbackError) {
+      console.error(
+        "Görsel geri yüklenemedi:",
+        rollbackError
+      );
+    }
+
+    throw new AdminFormError(
+      "Medya kayıtları güncellenemedi. İşlem tamamlanamadı."
+    );
+  }
+
+  // 12. Geçici dosyayı fiziksel olarak kaldır.
+  try {
+    await unlink(temporaryPath);
+  } catch (error) {
+    console.error(
+      "Silinen görselin geçici dosyası temizlenemedi:",
+      error
+    );
+  }
+
+  return true;
+}
+
 
 export async function addDocument(file: File): Promise<StoredDocument> {
   if (!file.size) throw new AdminFormError("Belge seçilmedi.");

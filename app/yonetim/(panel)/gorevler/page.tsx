@@ -184,7 +184,15 @@ function TaskCard({ task }: { task: Task }) {
             </AdminForm>
           </div>
         </details>
-        <AdminForm action={deleteTaskAction} className="w-auto">
+        <AdminForm
+          action={deleteTaskAction}
+          confirmation={{
+            title: "Görev silinsin mi?",
+            description: `“${task.title}” kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+            confirmLabel: "Görevi sil",
+          }}
+          className="w-auto"
+        >
           <input type="hidden" name="id" value={task.id} />
           <button className="w-full rounded-lg border border-red-200 px-3 py-2 lg:px-4 lg:py-2.5 text-xs lg:text-sm font-semibold text-red-700 hover:bg-red-50">
             Sil
