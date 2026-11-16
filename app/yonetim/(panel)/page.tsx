@@ -1,786 +1,390 @@
-
-import type { ReactNode } from "react";
 import Link from "next/link";
 
-import {
-  FiCheckCircle,
-  FiChevronDown,
-  FiEdit3,
-  FiFileText,
-  FiGlobe,
-  FiImage,
-  FiInfo,
-  FiLayers,
-  FiMail,
-  FiMonitor,
-  FiSave,
-  FiSmartphone,
-  FiType,
-  FiUsers,
-} from "react-icons/fi";
-
-import {
-  updateContactAction,
-  updateHomeAction,
-} from "@/app/yonetim/actions";
-
-import ContentImageField from "@/components/admin/ContentImageField";
-import AdminForm from "@/components/admin/AdminForm";
-
-import {
-  Field,
-  SaveButton,
-  TextArea,
-} from "@/components/admin/FormFields";
-
-import {
-  getImages,
-  getSiteContent,
-} from "@/lib/content-store";
 import { requireAdmin } from "@/lib/admin-auth";
+import { getTasks } from "@/lib/task-store";
 
-/* -----------------------------------------
-   COMMON STYLES
------------------------------------------ */
+const priorityOrder = {
+  high: 0,
+  normal: 1,
+  low: 2,
+} as const;
 
-const editorCardClass =
-  "rounded-xl border border-slate-200/80 bg-slate-50/70 " +
-  "p-3 sm:p-4 lg:p-5";
+const priorityLabels = {
+  high: "Yüksek",
+  normal: "Normal",
+  low: "Düşük",
+} as const;
 
-const groupGridClass =
-  "grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2";
+const priorityStyles = {
+  high: "bg-red-50 text-red-700 border-red-100",
+  normal: "bg-blue-50 text-blue-700 border-blue-100",
+  low: "bg-slate-100 text-slate-600 border-slate-200",
+} as const;
 
-const sectionDescriptionClass =
-  "text-xs leading-5 text-slate-500 sm:text-sm sm:leading-6";
+function getIstanbulDateKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
 
-/* -----------------------------------------
-   EDITOR GROUP
------------------------------------------ */
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
 
-function EditorGroup({
-  number,
-  title,
-  description,
-  icon: Icon,
-  children,
-  open = false,
-}: {
-  number: string;
-  title: string;
-  description: string;
-  icon: typeof FiImage;
-  children: ReactNode;
-  open?: boolean;
-}) {
+function formatToday() {
+  return new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+}
+
+export default async function AdminDashboardPage() {
+  await requireAdmin();
+
+  const tasks = await getTasks();
+
+  const todayKey = getIstanbulDateKey(new Date());
+
+  const activeTasks = tasks.filter(
+    (task) => task.status === "active",
+  );
+
+  const todayTasks = activeTasks
+    .filter((task) => {
+      if (!task.dueAt) return false;
+
+      return (
+        getIstanbulDateKey(new Date(task.dueAt)) === todayKey
+      );
+    })
+    .sort((a, b) => {
+      const priorityDiff =
+        priorityOrder[a.priority] -
+        priorityOrder[b.priority];
+
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+
+      if (!a.dueAt || !b.dueAt) return 0;
+
+      return (
+        new Date(a.dueAt).getTime() -
+        new Date(b.dueAt).getTime()
+      );
+    });
+
+  const overdueTasks = activeTasks.filter((task) => {
+    if (!task.dueAt) return false;
+
+    return (
+      getIstanbulDateKey(new Date(task.dueAt)) < todayKey
+    );
+  });
+
   return (
-    <details
-      open={open}
-      className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_2px_12px_rgba(21,39,65,0.035)] transition-shadow duration-200 hover:shadow-[0_6px_22px_rgba(21,39,65,0.065)]"
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 marker:hidden sm:gap-4 sm:px-5 sm:py-5 lg:px-7 [&::-webkit-details-marker]:hidden">
-        {/* ICON */}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0F3F7] text-[#152741] sm:h-12 sm:w-12">
-          <Icon className="text-lg sm:text-xl" />
+    <div className="mx-auto max-w-7xl space-y-7">
+      {/* HEADER */}
+
+    <div className="order-1">
+    <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D79B43]">
+          Yönetim Paneli
+        </p>
+
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <h1 className="text-2xl font-bold text-[#152741] lg:text-3xl">
+            Genel Bakış
+          </h1>
+
+          <span className="text-sm font-medium capitalize text-slate-500">
+            {formatToday()}
+          </span>
         </div>
 
-        {/* TITLE */}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[14px] font-semibold leading-5 text-[#152741] sm:text-[16px] lg:text-[17px]">
-              {title}
-            </h3>
+        <p className="mt-2 text-sm text-slate-500">
+          Website içerikleri, görevler ve yönetim
+          işlemlerinin genel görünümü.
+        </p>
+      </div>
+  </div>
 
-            <span className="rounded-md bg-[#EFB059]/15 px-2 py-0.5 text-[10px] font-semibold text-[#A47434]">
-              {number}
+   {/* 2. GECİKEN GÖREVLER - SADECE MOBİL */}
+  {overdueTasks.length > 0 && (
+    <div className="order-2 xl:hidden">
+      <OverdueAlert count={overdueTasks.length} />
+    </div>
+  )}
+
+    {/* 3. İSTATİSTİKLER - MOBİLDE 4. SIRADA */}
+  <div className="order-4 grid grid-cols-2 gap-3 xl:order-2 xl:grid-cols-4 xl:gap-4">
+    {/* STATS */}
+    
+        <StatCard
+          label="Blog Yazıları"
+          value={0}
+          href="/yonetim/blog"
+        />
+
+        <StatCard
+          label="Belgeler"
+          value={0}
+          href="/yonetim/belgeler"
+        />
+
+        <StatCard
+          label="Görseller"
+          value={0}
+          href="/yonetim/gorseller"
+        />
+
+        <StatCard
+          label="Açık Görevler"
+          value={activeTasks.length}
+          href="/yonetim/gorevler"
+        />
+    
+  </div>
+
+
+   {/* 4. ALT ALAN */}
+  <div className="contents xl:grid xl:grid-cols-[1.7fr_0.8fr] xl:gap-6">
+
+    {/* MOBİLDE 3. SIRADA */}
+    <section className="order-3 rounded-2xl border border-slate-200 bg-white shadow-sm xl:order-none">
+      {/* TODAY TASKS */}
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5 sm:px-6">
+            <div>
+              <h2 className="text-lg font-bold text-[#152741]">
+                Bugün Yapılacaklar
+              </h2>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Öncelik sırasına göre bugünün görevleri
+              </p>
+            </div>
+
+            <span className="rounded-full bg-[#152741] px-3 py-1 text-xs font-bold text-white">
+              {todayTasks.length}
             </span>
           </div>
 
-          <p className="mt-1 text-[11px] leading-5 text-slate-500 sm:text-[12px] lg:text-[13px]">
-            {description}
-          </p>
-        </div>
+          {todayTasks.length ? (
+            <div className="divide-y divide-slate-100">
+              {todayTasks.map((task) => (
+                <Link
+                  key={task.id}
+                  href="/yonetim/gorevler"
+                  className="flex items-start justify-between gap-4 px-5 py-4 transition hover:bg-slate-50 sm:px-6"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                          priorityStyles[
+                            task.priority
+                          ]
+                        }`}
+                      >
+                        {
+                          priorityLabels[
+                            task.priority
+                          ]
+                        }
+                      </span>
 
-        {/* CHEVRON */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors group-hover:border-[#EFB059]/60 group-hover:text-[#152741] sm:h-9 sm:w-9">
-          <FiChevronDown className="text-base transition-transform duration-200 group-open:rotate-180" />
-        </div>
-      </summary>
+                      {task.category && (
+                        <span className="text-xs text-slate-400">
+                          #{task.category}
+                        </span>
+                      )}
+                    </div>
 
-      <div className="border-t border-slate-100 px-4 py-5 sm:px-5 sm:py-6 lg:px-7 lg:py-7">
-        {children}
+                    <h3 className="mt-2 font-semibold text-[#152741]">
+                      {task.title}
+                    </h3>
+
+                    {task.description && (
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+                        {task.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {task.dueAt && (
+                    <span className="shrink-0 text-sm font-semibold text-slate-500">
+                      {formatTime(task.dueAt)}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="px-6 py-12 text-center">
+              <div className="text-2xl">✓</div>
+
+              <p className="mt-3 font-semibold text-[#152741]">
+                Bugün için görev yok
+              </p>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Bugünün planı temiz görünüyor.
+              </p>
+            </div>
+          )}
+
+          <div className="border-t border-slate-100 px-5 py-4 sm:px-6">
+            <Link
+              href="/yonetim/gorevler"
+              className="text-sm font-semibold text-[#D79B43]"
+            >
+              Tüm görevleri görüntüle →
+            </Link>
+          </div>
+        </section>
+    </section>
+
+    {/* MOBİLDE 5. SIRADA */}
+    <div className="order-5 space-y-5 xl:order-none">
+
+      {/* GECİKEN GÖREVLER - SADECE MASAÜSTÜ */}
+      {overdueTasks.length > 0 && (
+        <div className="hidden xl:block">
+          <OverdueAlert count={overdueTasks.length} />
+        </div>
+      )}
+
+      {/* Mevcut Hızlı İşlemler */}
+
+    </div>
+  </div>
+
+    
+
+      <div className="grid gap-6 xl:grid-cols-[1.7fr_0.8fr] mt-5">
+        {/* RIGHT COLUMN */}
+        <div className="space-y-5">
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="font-bold text-[#152741]">
+              Hızlı İşlemler
+            </h2>
+
+            <div className="mt-4 grid gap-2">
+              <QuickLink
+                href="/yonetim/blog"
+                label="Blog yazısı ekle"
+              />
+
+              <QuickLink
+                href="/yonetim/belgeler"
+                label="Belge ekle"
+              />
+
+              <QuickLink
+                href="/yonetim/gorevler"
+                label="Yeni görev oluştur"
+              />
+
+              <QuickLink
+                href="/yonetim/icerik"
+                label="Sayfa içeriklerini düzenle"
+              />
+            </div>
+          </section>
+        </div>
       </div>
-    </details>
+    </div>
   );
 }
 
-/* -----------------------------------------
-   PAGE HEADING
------------------------------------------ */
-
-function PageHeading({
-  number,
-  title,
-  description,
-  icon: Icon,
+function StatCard({
+  label,
+  value,
   href,
 }: {
-  number: string;
-  title: string;
-  description: string;
-  icon: typeof FiImage;
+  label: string;
+  value: number;
   href: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFF3E2] text-[#B67B2E] sm:h-12 sm:w-12">
-          <Icon className="text-xl" />
-        </div>
+    <Link
+      href={href}
+      className="group flex md:min-h-[125px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 md:p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:min-h-[155px] lg:rounded-2xl lg:p-5"
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 lg:text-xs">
+        {label}
+      </p>
 
-        <div className="min-w-0">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-            SAYFA {number}
-          </p>
+      <div className="flex items-end justify-between">
+        <strong className="text-xl md:text-2xl font-bold text-[#152741] lg:text-3xl">
+          {value}
+        </strong>
 
-          <h2 className="text-lg font-bold text-[#152741] sm:text-xl lg:text-[23px]">
-            {title}
-          </h2>
-
-          <p className="mt-1 text-[11px] text-slate-500 sm:text-[13px]">
-            {description}
-          </p>
-        </div>
+        <span className="text-base text-[#D79B43] transition group-hover:translate-x-1 lg:text-lg">
+          →
+        </span>
       </div>
+    </Link>
+  );
+}
+
+function QuickLink({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-[#152741] transition hover:bg-slate-100"
+    >
+      {label}
+      <span className="text-[#D79B43]">+</span>
+    </Link>
+  );
+}
+
+function OverdueAlert({ count }: { count: number }) {
+  return (
+    <section
+      role="status"
+      className="rounded-2xl border border-red-100 bg-red-50 p-4 lg:p-5"
+    >
+      <div className="flex items-center gap-2 text-red-700">
+        <span aria-hidden="true">⚠</span>
+        <span className="text-xs font-bold uppercase tracking-wider">
+          Dikkat
+        </span>
+      </div>
+
+      <p className="mt-2 text-lg font-bold text-red-700">
+        {count} gecikmiş görev
+      </p>
+
+      <p className="mt-1 text-xs text-red-700 lg:text-sm">
+        Henüz tamamlanmamış görevleriniz bulunuyor.
+      </p>
 
       <Link
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-[#152741] transition-colors hover:border-[#EFB059] sm:text-xs"
+        href="/yonetim/gorevler"
+        className="mt-3 inline-block text-xs font-bold text-red-700"
       >
-        <FiGlobe className="text-sm" />
-        Sayfayı Gör
+        Görevleri kontrol et →
       </Link>
-    </div>
-  );
-}
-
-/* -----------------------------------------
-   INNER EDITOR CARD
------------------------------------------ */
-
-function ItemCard({
-  number,
-  children,
-}: {
-  number: number;
-  children: ReactNode;
-}) {
-  return (
-    <div className={editorCardClass}>
-      <div className="mb-4 flex items-center gap-2.5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#152741] text-[11px] font-semibold text-white">
-          {number.toString().padStart(2, "0")}
-        </span>
-
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#738595]">
-          İçerik {number}
-        </span>
-      </div>
-
-      {children}
-    </div>
-  );
-}
-
-/* -----------------------------------------
-   FORM SECTION LABEL
------------------------------------------ */
-
-function FormSectionLabel({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="border-b border-slate-200 pb-3">
-      <h4 className="text-[13px] font-semibold text-[#152741] sm:text-[15px]">
-        {title}
-      </h4>
-
-      {description && (
-        <p className="mt-1 text-[11px] leading-5 text-slate-500 sm:text-xs">
-          {description}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* -----------------------------------------
-   SAVE BAR
------------------------------------------ */
-
-function SaveBar({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return (
-    <div className="sticky bottom-2 z-20 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_8px_35px_rgba(21,39,65,0.12)] backdrop-blur-md sm:bottom-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-      <div className="hidden items-center gap-3 sm:flex">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EAF0F5] text-[#152741]">
-          <FiSave />
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold text-[#152741]">
-            Değişiklikleri Kaydet
-          </p>
-
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Düzenlediğiniz alanları siteye uygulayın.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex w-full items-center justify-center sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
-        <SaveButton>{children}</SaveButton>
-      </div>
-    </div>
-  );
-}
-
-/* -----------------------------------------
-   ADMIN CONTENT PAGE
------------------------------------------ */
-
-export default async function AdminContentPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ durum?: string }>;
-}) {
-  await requireAdmin();
-
-  const [content, images, params] = await Promise.all([
-    getSiteContent(),
-    getImages(),
-    searchParams,
-  ]);
-
-  const { home, contact } = content;
-
-  return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-7 pb-10 sm:space-y-8 lg:space-y-10">
-
-      {/* PAGE HEADER */}
-      <header className="relative overflow-hidden rounded-2xl bg-[#152741] px-5 py-6 text-white shadow-[0_12px_35px_rgba(21,39,65,0.12)] sm:px-7 sm:py-8 lg:px-9 lg:py-10">
-        {/* DECORATIVE ELEMENTS */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full border border-white/10 sm:h-80 sm:w-80"
-        />
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-36 -right-10 h-64 w-64 rounded-full border border-[#EFB059]/15"
-        />
-
-        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#EFB059]/20 bg-[#EFB059]/10 px-3 py-1.5">
-              <FiEdit3 className="text-[12px] text-[#EFB059]" />
-
-              <span className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#EFB059] sm:text-[11px]">
-                İçerik Yönetimi
-              </span>
-            </div>
-
-            <h1 className="text-[24px] font-bold leading-tight text-white sm:text-[30px] lg:text-[36px]">
-              Sayfa İçerikleri
-            </h1>
-
-            <p className="mt-3 max-w-xl text-[12px] leading-[1.8] text-white/65 sm:text-[13px] lg:text-[14px]">
-              Web sitenizin ana sayfa ve iletişim içeriklerini
-              kolayca düzenleyin. Metinleri güncelleyin,
-              görselleri değiştirin ve kaydedin.
-            </p>
-          </div>
-
-          {/* PAGE SHORTCUTS */}
-          <nav
-            aria-label="Sayfa bölümleri"
-            className="flex w-full flex-wrap gap-2 lg:w-auto"
-          >
-            <a
-              href="#anasayfa"
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-[#152741] transition-colors hover:bg-[#EFB059] sm:flex-none sm:text-sm"
-            >
-              <FiMonitor />
-              Anasayfa
-            </a>
-
-            <a
-              href="#iletisim"
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 sm:flex-none sm:text-sm"
-            >
-              <FiMail />
-              İletişim
-            </a>
-          </nav>
-        </div>
-      </header>
-
-      {/* SUCCESS MESSAGE */}
-      {params.durum && (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 sm:px-5 sm:py-4"
-        >
-          <FiCheckCircle className="mt-0.5 shrink-0 text-lg text-emerald-600" />
-
-          <div>
-            <p className="text-[13px] font-semibold text-emerald-800 sm:text-sm">
-              Değişiklikler kaydedildi
-            </p>
-
-            <p className="mt-1 text-[11px] leading-5 text-emerald-700 sm:text-xs">
-              İçerikler başarıyla güncellendi ve web sitesine
-              yansıtıldı.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================
-          HOME PAGE
-      ===================================== */}
-
-      <section
-        id="anasayfa"
-        className="scroll-mt-5 space-y-5 sm:space-y-6"
-      >
-        <PageHeading
-          number="01"
-          title="Anasayfa"
-          description="Ana sayfadaki görseller ve metinler"
-          icon={FiMonitor}
-          href="/"
-        />
-
-        <AdminForm
-          action={updateHomeAction}
-          className="space-y-4 sm:space-y-5"
-        >
-          {/* HOME IMAGES */}
-          <EditorGroup
-            number="01"
-            title="Görseller"
-            description="Masaüstü, mobil ve ekip görsellerini yönetin."
-            icon={FiImage}
-            open
-          >
-            <div className={groupGridClass}>
-              <ContentImageField
-                label="Masaüstü ana görsel"
-                uploadName="heroDesktopImage"
-                libraryName="heroDesktopImageLibrary"
-                currentUrl={home.heroDesktopImage}
-                images={images}
-              />
-
-              <ContentImageField
-                label="Mobil ana görsel"
-                uploadName="heroMobileImage"
-                libraryName="heroMobileImageLibrary"
-                currentUrl={home.heroMobileImage}
-                images={images}
-              />
-
-              <ContentImageField
-                label="Hakkımızda masaüstü"
-                uploadName="aboutDesktopImage"
-                libraryName="aboutDesktopImageLibrary"
-                currentUrl={home.about.desktopImage}
-                images={images}
-              />
-
-              <ContentImageField
-                label="Hakkımızda mobil"
-                uploadName="aboutMobileImage"
-                libraryName="aboutMobileImageLibrary"
-                currentUrl={home.about.mobileImage}
-                images={images}
-              />
-
-              <ContentImageField
-                label="Ekip fotoğrafı"
-                uploadName="staffImage"
-                libraryName="staffImageLibrary"
-                currentUrl={home.staff.image}
-                images={images}
-              />
-            </div>
-          </EditorGroup>
-
-          {/* HERO SLIDES */}
-          <EditorGroup
-            number="02"
-            title="Ana Ekran Yazıları"
-            description="Ana görselde gösterilen başlık ve açıklamalar."
-            icon={FiType}
-          >
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 rounded-lg bg-[#F1F5F9] p-3 text-[11px] leading-5 text-slate-600 sm:text-xs">
-                <FiInfo className="mt-0.5 shrink-0 text-sm text-[#738595]" />
-
-                <p>
-                  Her kart ana ekranda gösterilen bir slaytı
-                  temsil eder. Buradaki sıralama sitedeki
-                  gösterim sıralamasıdır.
-                </p>
-              </div>
-
-              {home.heroSlides.map((slide, index) => (
-                <ItemCard
-                  key={slide.id}
-                  number={index + 1}
-                >
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-                    <Field
-                      label={`${index + 1}. başlık`}
-                      name={`heroTitle_${index}`}
-                      defaultValue={slide.title}
-                    />
-
-                    <div className="lg:col-span-2">
-                      <TextArea
-                        label="Açıklama"
-                        name={`heroDescription_${index}`}
-                        defaultValue={slide.description}
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </ItemCard>
-              ))}
-            </div>
-          </EditorGroup>
-
-          {/* SERVICES */}
-          <EditorGroup
-            number="03"
-            title="Hizmetlerimiz"
-            description="Hizmet başlıkları, açıklamalar ve açılır kart içerikleri."
-            icon={FiLayers}
-          >
-            <div className="space-y-7">
-              {/* INTRO */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Bölüm Giriş Alanı"
-                  description="Hizmetlerimiz bölümünün üst kısmındaki metinler."
-                />
-
-                <Field
-                  label="Bölüm başlığı"
-                  name="servicesTitle"
-                  defaultValue={home.servicesTitle}
-                />
-
-                <TextArea
-                  label="Giriş yazısı"
-                  name="servicesIntro"
-                  defaultValue={home.servicesIntro}
-                  rows={5}
-                />
-              </div>
-
-              {/* SERVICE DETAILS */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Hizmet Detayları"
-                  description="Hizmet açıklamalarını ayrı ayrı düzenleyin."
-                />
-
-                {home.services.map((service, index) => (
-                  <ItemCard
-                    key={service.id}
-                    number={index + 1}
-                  >
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-                      <Field
-                        label="Başlık"
-                        name={`serviceTitle_${index}`}
-                        defaultValue={service.title}
-                      />
-
-                      <div className="lg:col-span-2">
-                        <TextArea
-                          label="Açıklama"
-                          name={`serviceDescription_${index}`}
-                          defaultValue={service.description}
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                  </ItemCard>
-                ))}
-              </div>
-
-              {/* SERVICE SLIDES */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Açılır Hizmet Kartları"
-                  description="Ziyaretçilerin tıklayarak genişlettiği hizmet kartları."
-                />
-
-                {home.serviceSlides.map((service, index) => (
-                  <ItemCard
-                    key={service.id}
-                    number={index + 1}
-                  >
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-                      <Field
-                        label="Başlık"
-                        name={`serviceSlideTitle_${index}`}
-                        defaultValue={service.title}
-                      />
-
-                      <div className="lg:col-span-2">
-                        <TextArea
-                          label="Açıklama"
-                          name={`serviceSlideDescription_${index}`}
-                          defaultValue={service.description}
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                  </ItemCard>
-                ))}
-              </div>
-            </div>
-          </EditorGroup>
-
-          {/* ABOUT & STAFF */}
-          <EditorGroup
-            number="04"
-            title="Hakkımızda ve Ekip"
-            description="Kurumsal tanıtım, avukat bilgileri ve ekip açıklamaları."
-            icon={FiUsers}
-          >
-            <div className="space-y-7">
-              {/* ABOUT */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Hakkımızda İçerikleri"
-                />
-
-                <Field
-                  label="Hakkımızda başlığı"
-                  name="aboutTitle"
-                  defaultValue={home.about.title}
-                />
-
-                {home.about.paragraphs.map(
-                  (paragraph, index) => (
-                    <TextArea
-                      key={index}
-                      label={`${index + 1}. paragraf`}
-                      name={`aboutParagraph_${index}`}
-                      defaultValue={paragraph}
-                      rows={5}
-                    />
-                  )
-                )}
-              </div>
-
-              {/* LAWYER & STAFF */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Avukat ve Ekip Bilgileri"
-                />
-
-                <div className={groupGridClass}>
-                  <Field
-                    label="Avukat adı"
-                    name="lawyerName"
-                    defaultValue={home.about.lawyer.name}
-                  />
-
-                  <Field
-                    label="Ekip kartı adı"
-                    name="staffName"
-                    defaultValue={home.staff.name}
-                  />
-
-                  <div className="md:col-span-2">
-                    <TextArea
-                      label="Hakkımızda avukat açıklaması"
-                      name="lawyerDescription"
-                      defaultValue={
-                        home.about.lawyer.description
-                      }
-                      rows={5}
-                    />
-                  </div>
-
-                  <Field
-                    label="Uzmanlık"
-                    name="staffSpecialization"
-                    defaultValue={
-                      home.staff.specialization
-                    }
-                  />
-
-                  <div className="md:col-span-2">
-                    <TextArea
-                      label="Ekip açıklaması"
-                      name="staffDescription"
-                      defaultValue={
-                        home.staff.description
-                      }
-                      rows={5}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </EditorGroup>
-
-          {/* HOME SAVE */}
-          <SaveBar>
-            Anasayfayı kaydet
-          </SaveBar>
-        </AdminForm>
-      </section>
-
-      {/* =====================================
-          CONTACT PAGE
-      ===================================== */}
-
-      <section
-        id="iletisim"
-        className="scroll-mt-5 space-y-5 pt-5 sm:space-y-6 sm:pt-8"
-      >
-        <PageHeading
-          number="02"
-          title="İletişim"
-          description="İletişim sayfasının görselleri ve bilgileri"
-          icon={FiMail}
-          href="/iletisim"
-        />
-
-        <AdminForm
-          action={updateContactAction}
-          className="space-y-4 sm:space-y-5"
-        >
-          {/* CONTACT IMAGE */}
-          <EditorGroup
-            number="01"
-            title="İletişim Görseli"
-            description="İletişim sayfasının üst bölümündeki ana görsel."
-            icon={FiImage}
-            open
-          >
-            <div className="max-w-2xl">
-              <ContentImageField
-                label="İletişim ana görseli"
-                uploadName="heroImage"
-                libraryName="heroImageLibrary"
-                currentUrl={contact.heroImage}
-                images={images}
-              />
-            </div>
-          </EditorGroup>
-
-          {/* CONTACT INFORMATION */}
-          <EditorGroup
-            number="02"
-            title="İletişim Bilgileri"
-            description="Telefon, e-posta, adres, başlık ve harita bilgileri."
-            icon={FiFileText}
-            open
-          >
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Genel Bilgiler"
-                  description="Web sitesinde görünen iletişim bilgileri."
-                />
-
-                <div className={groupGridClass}>
-                  <Field
-                    label="Sayfa başlığı"
-                    name="title"
-                    defaultValue={contact.title}
-                  />
-
-                  <Field
-                    label="Telefon"
-                    name="phone"
-                    defaultValue={contact.phone}
-                  />
-
-                  <Field
-                    label="E-posta"
-                    name="email"
-                    type="email"
-                    defaultValue={contact.email}
-                  />
-
-                  <Field
-                    label="Kısa konum"
-                    name="location"
-                    defaultValue={contact.location}
-                  />
-
-                  <div className="md:col-span-2">
-                    <TextArea
-                      label="Adres"
-                      name="address"
-                      defaultValue={contact.address}
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <TextArea
-                      label="İletişim giriş yazısı"
-                      name="intro"
-                      defaultValue={contact.intro}
-                      rows={4}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* MAP */}
-              <div className="space-y-4">
-                <FormSectionLabel
-                  title="Harita Ayarları"
-                  description="İletişim sayfasında gösterilen Google Haritalar bağlantısı."
-                />
-
-                <TextArea
-                  label="Google Maps embed adresi"
-                  name="mapEmbedUrl"
-                  defaultValue={contact.mapEmbedUrl}
-                  rows={3}
-                  hint="Google Maps > Paylaş > Harita yerleştirme içindeki src adresi"
-                />
-              </div>
-            </div>
-          </EditorGroup>
-
-          {/* CONTACT SAVE */}
-          <SaveBar>
-            İletişim sayfasını kaydet
-          </SaveBar>
-        </AdminForm>
-      </section>
-    </div>
+    </section>
   );
 }

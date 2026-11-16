@@ -10,6 +10,8 @@ Yerel geliştirmede çevre değişkenleri tanımlı değilse `admin` / `admin123
 
 Panelden anasayfa ve iletişim sayfası metin/görselleri, blog yazıları ve yalnızca panelde görünen özel belgeler yönetilir. İçerikler varsayılan olarak proje kökündeki `uploads` klasöründe tutulur. Canlı sunucuda bu klasörü kalıcı bir volume'a bağlayın veya `CONTENT_STORAGE_PATH` ile kalıcı dizini belirtin. Dağıtım sırasında bu dizin silinmemelidir.
 
+`content.json`, `documents.json` ve `images.json` dosyaları her okumada doğrulanır. Yalnızca dosya henüz yoksa başlangıç verisi kullanılır; okunamayan veya bozuk bir kayıt dosyası veri kaybını önlemek için panel işlemini durdurur. Başarılı her yazımdan önce ilgili dosyanın son geçerli sürümü aynı dizinde `.backup` uzantısıyla saklanır.
+
 ## İletişim formu rate limit
 
 İletişim formu denemeleri `uploads/data/contact-rate-limits.json` dosyasında ham IP veya e-posta adresi tutulmadan saklanır. IP başına 10 dakikada 3, e-posta başına 10 dakikada 2 ve IP başına 24 saatte 15 gönderim denemesine izin verilir. `CONTACT_RATE_LIMIT_SECRET` tanımlanmazsa HMAC anahtarı olarak `SESSION_SECRET` kullanılır.

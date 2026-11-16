@@ -1,23 +1,103 @@
-import { isAdminAuthenticated } from "@/lib/admin-auth";
-import { getDocumentFile } from "@/lib/content-store";
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdminAuthenticated())) return new Response("Yetkisiz erişim.", { status: 401 });
-  const { id } = await params;
-  const result = await getDocumentFile(id);
-  if (!result) return new Response("Belge bulunamadı.", { status: 404 });
-  const wantsPreview = new URL(request.url).searchParams.get("goruntule") === "1";
-  const isPdf = result.buffer.subarray(0, 5).toString("ascii") === "%PDF-";
-  if (wantsPreview && !isPdf) {
-    return new Response("Bu dosya PDF olarak önizlenemiyor.", { status: 415 });
+import {
+  isAdminAuthenticated,
+} from "@/lib/admin-auth";
+
+import {
+  getDocumentFile,
+} from "@/lib/content-store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const privateHeaders = {
+  "Cache-Control": "private, no-store, max-age=0",
+  "X-Content-Type-Options": "nosniff",
+};
+
+export async function GET(
+  request: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ id: string }>;
+  },
+) {
+  // Her istekte oturum kontrolü.
+  const authenticated = await isAdminAuthenticated();
+
+  if (!authenticated) {
+    return new Response("Yetkisiz erişim.", {
+      status: 401,
+      headers: privateHeaders,
+    });
   }
-  const encodedName = encodeURIComponent(result.document.name);
+
+  const { id } = await params;
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(id)) {
+    return new Response("Belge bulunamadı.", {
+      status: 404,
+      headers: privateHeaders,
+    });
+  }
+
+  let result;
+
+  try {
+    result = await getDocumentFile(id);
+  } catch (error) {
+    console.error("Belge okuma hatası:", error);
+
+    return new Response("Belge okunamadı.", {
+      status: 500,
+      headers: privateHeaders,
+    });
+  }
+
+  if (!result) {
+    return new Response("Belge bulunamadı.", {
+      status: 404,
+      headers: privateHeaders,
+    });
+  }
+
+  const wantsPreview =
+    new URL(request.url).searchParams.get("goruntule") === "1";
+
+  const isPdf =
+    result.buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+
+  if (wantsPreview && !isPdf) {
+    return new Response(
+      "Bu dosya PDF olarak önizlenemiyor.",
+      {
+        status: 415,
+        headers: privateHeaders,
+      },
+    );
+  }
+
+  const encodedName = encodeURIComponent(
+    result.document.name,
+  );
+
   return new Response(result.buffer, {
     headers: {
-      "Content-Type": isPdf ? "application/pdf" : result.document.mimeType,
-      "Content-Disposition": `${wantsPreview ? "inline" : "attachment"}; filename*=UTF-8''${encodedName}`,
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
+      ...privateHeaders,
+
+      "Content-Type": isPdf
+        ? "application/pdf"
+        : "application/octet-stream",
+
+      "Content-Disposition": `${
+        wantsPreview ? "inline" : "attachment"
+      }; filename*=UTF-8''${encodedName}`,
+
+      "Content-Length": String(result.buffer.length),
     },
   });
 }

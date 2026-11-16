@@ -1,4 +1,3 @@
-
 import {
   FiAlertCircle,
   FiCheckCircle,
@@ -23,6 +22,8 @@ import AdminForm from "@/components/admin/AdminForm";
 import { SaveButton } from "@/components/admin/FormFields";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getDocuments } from "@/lib/content-store";
+import DocumentShareButton from "@/components/admin/DocumentShareButton";
+import DocumentFileInput from "@/components/admin/DocumentFileInput";
 
 type Props = {
   searchParams: Promise<{ durum?: string }>;
@@ -48,22 +49,15 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default async function DocumentsPage({
-  searchParams,
-}: Props) {
+export default async function DocumentsPage({ searchParams }: Props) {
   await requireAdmin();
 
-  const [documents, params] = await Promise.all([
-    getDocuments(),
-    searchParams,
-  ]);
+  const [documents, params] = await Promise.all([getDocuments(), searchParams]);
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10 sm:space-y-6 lg:space-y-8">
-
       {/* PAGE HEADER */}
       <header className="relative overflow-hidden rounded-2xl bg-[#152741] px-5 py-6 text-white shadow-[0_12px_35px_rgba(21,39,65,0.12)] sm:px-7 sm:py-8 lg:px-9 lg:py-10">
-
         {/* DECORATIVE BACKGROUND */}
         <div
           aria-hidden="true"
@@ -76,7 +70,6 @@ export default async function DocumentsPage({
         />
 
         <div className="relative z-10 flex flex-col gap-4 lg:gap-5 sm:flex-row sm:items-center sm:justify-between">
-
           <div className="max-w-2xl">
             {/* CATEGORY */}
             <div className="mb-2 lg:mb-4 inline-flex items-center gap-2 rounded-full border border-[#EFB059]/20 bg-[#EFB059]/10 px-3 py-1.5">
@@ -92,9 +85,8 @@ export default async function DocumentsPage({
             </h1>
 
             <p className="mt-2 lg:mt-3 max-w-xl text-[12px] leading-[1.8] text-white/70 sm:text-[13px] lg:text-[14px]">
-              Belgelerinizi yükleyin, arşivleyin ve
-              ihtiyaç duyduğunuzda güvenle indirin.
-              Bu belgeler web sitesinde yayınlanmaz.
+              Belgelerinizi yükleyin, arşivleyin ve ihtiyaç duyduğunuzda güvenle
+              indirin. Bu belgeler web sitesinde yayınlanmaz.
             </p>
 
             <div className="mt-5 inline-flex items-center gap-2 text-[11px] text-white/70 sm:text-xs">
@@ -155,37 +147,10 @@ export default async function DocumentsPage({
         </div>
 
         <div className="p-4 sm:p-6 lg:p-7">
-          <AdminForm
-            action={uploadDocumentAction}
-            className="space-y-5"
-          >
+          <AdminForm action={uploadDocumentAction} className="space-y-5">
             {/* FILE INPUT */}
-            <label className="group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-200 bg-[#FAFBFD] px-4 py-8 text-center transition-colors hover:border-[#EFB059] hover:bg-[#FFFCF7] sm:px-6 sm:py-10">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#152741] shadow-sm">
-                <FiUploadCloud className="text-[27px]" />
-              </span>
-
-              <span className="text-[13px] font-semibold text-[#152741] sm:text-[15px]">
-                Dosyanızı buradan seçin
-              </span>
-
-              <span className="max-w-md text-[11px] leading-5 text-slate-500 sm:text-xs">
-                Yükleyeceğiniz belgeler yalnızca yönetim
-                panelinde saklanır.
-              </span>
-
-              <span className="rounded-lg bg-[#152741] px-4 py-2.5 text-xs font-semibold text-white transition-colors group-hover:bg-[#203B61]">
-                Dosya Seç
-              </span>
-
-              <input
-                name="document"
-                type="file"
-                required
-                aria-label="Yüklenecek belge"
-                className="sr-only"
-              />
-            </label>
+           {/* FILE INPUT */}
+<DocumentFileInput />
 
             {/* UPLOAD FOOTER */}
             <div className="flex flex-col gap-3 rounded-xl bg-[#F3F6FA] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -193,8 +158,8 @@ export default async function DocumentsPage({
                 <FiAlertCircle className="mt-0.5 shrink-0 text-sm text-[#738595]" />
 
                 <p className="text-[11px] leading-5 text-slate-500 sm:text-xs">
-                  Dosya başına maksimum 25 MB.
-                  Dosyalar web sitesinde herkese açık değildir.
+                  Dosya başına maksimum 25 MB. Dosyalar web sitesinde herkese
+                  açık değildir.
                 </p>
               </div>
 
@@ -208,7 +173,6 @@ export default async function DocumentsPage({
 
       {/* DOCUMENT LIST */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_2px_12px_rgba(21,39,65,0.035)]">
-
         {/* LIST HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5 lg:px-7">
           <div className="flex items-center gap-3">
@@ -238,9 +202,7 @@ export default async function DocumentsPage({
             {documents.map((document) => {
               const isPdf =
                 document.mimeType === "application/pdf" ||
-                document.name
-                  .toLocaleLowerCase("tr-TR")
-                  .endsWith(".pdf");
+                document.name.toLocaleLowerCase("tr-TR").endsWith(".pdf");
 
               return (
                 <article
@@ -250,11 +212,13 @@ export default async function DocumentsPage({
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     {/* FILE DETAILS */}
                     <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${
-                        isPdf
-                          ? "bg-red-50 text-red-600"
-                          : "bg-[#EEF2F7] text-[#152741]"
-                      }`}>
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${
+                          isPdf
+                            ? "bg-red-50 text-red-600"
+                            : "bg-[#EEF2F7] text-[#152741]"
+                        }`}
+                      >
                         {isPdf ? (
                           <FiFileText className="text-[21px]" />
                         ) : (
@@ -271,9 +235,7 @@ export default async function DocumentsPage({
                         </h3>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 sm:text-xs">
-                          <span>
-                            {formatFileSize(document.size)}
-                          </span>
+                          <span>{formatFileSize(document.size)}</span>
 
                           <span aria-hidden="true">•</span>
 
@@ -303,6 +265,11 @@ export default async function DocumentsPage({
                         İndir
                       </a>
 
+                      <DocumentShareButton
+                        fileName={document.name}
+                        fileUrl={`/api/yonetim/belgeler/${document.id}`}
+                      />
+
                       <AdminForm
                         action={deleteDocumentAction}
                         confirmation={{
@@ -312,11 +279,7 @@ export default async function DocumentsPage({
                         }}
                         className="flex-1 sm:flex-none"
                       >
-                        <input
-                          type="hidden"
-                          name="id"
-                          value={document.id}
-                        />
+                        <input type="hidden" name="id" value={document.id} />
 
                         <button
                           type="submit"
@@ -367,8 +330,8 @@ export default async function DocumentsPage({
             </h3>
 
             <p className="mt-2 max-w-sm text-[12px] leading-6 text-slate-500 sm:text-[13px]">
-              İlk belgenizi yukarıdaki yükleme alanından
-              ekleyerek arşivinizi oluşturmaya başlayabilirsiniz.
+              İlk belgenizi yukarıdaki yükleme alanından ekleyerek arşivinizi
+              oluşturmaya başlayabilirsiniz.
             </p>
           </div>
         )}

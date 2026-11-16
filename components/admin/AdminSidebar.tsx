@@ -18,14 +18,21 @@ import {
   FiShield,
   FiX,
 } from "react-icons/fi";
+import { MdContentCopy } from "react-icons/md";
+import { IoDocumentTextOutline } from "react-icons/io5";
 
 import { logoutAction } from "@/app/yonetim/actions";
 
 const links = [
-  {
+   {
     href: "/yonetim",
-    label: "Sayfa İçerikleri",
+    label: "Genel",
     icon: FiGrid,
+  },
+  {
+    href: "/yonetim/sayfa-icerik",
+    label: "Sayfa İçerikleri",
+    icon: IoDocumentTextOutline,
   },
   {
     href: "/yonetim/gorevler",
