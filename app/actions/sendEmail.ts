@@ -2,6 +2,9 @@
 "use server";
 
 import nodemailer from "nodemailer";
+import { headers } from "next/headers";
+
+import { checkContactRateLimit } from "@/lib/contact-rate-limit";
 
 type SendEmailResult = {
   success: boolean;
@@ -20,6 +23,17 @@ function escapeHtml(value: string): string {
 
     return entities[char];
   });
+}
+
+async function clientIpAddress(): Promise<string> {
+  const requestHeaders = await headers();
+  const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0];
+  return (
+    requestHeaders.get("x-real-ip") ||
+    requestHeaders.get("cf-connecting-ip") ||
+    forwardedFor ||
+    "unknown"
+  ).trim();
 }
 
 export async function sendEmail(
@@ -94,6 +108,30 @@ export async function sendEmail(
     return {
       success: false,
       message: "E-posta yapılandırması geçersiz.",
+    };
+  }
+
+  try {
+    const rateLimit = await checkContactRateLimit({
+      ip: await clientIpAddress(),
+      email,
+    });
+
+    if (!rateLimit.allowed) {
+      const retryAfterMinutes = Math.max(
+        1,
+        Math.ceil(rateLimit.retryAfterSeconds / 60),
+      );
+      return {
+        success: false,
+        message: `Çok sık gönderim yaptınız. Lütfen yaklaşık ${retryAfterMinutes} dakika sonra tekrar deneyiniz.`,
+      };
+    }
+  } catch (error) {
+    console.error("Contact rate limit error:", error);
+    return {
+      success: false,
+      message: "İletişim formu şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyiniz.",
     };
   }
 

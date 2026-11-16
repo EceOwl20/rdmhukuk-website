@@ -75,11 +75,11 @@ export default async function DocumentsPage({
           className="pointer-events-none absolute -bottom-36 -right-12 h-64 w-64 rounded-full border border-[#EFB059]/20"
         />
 
-        <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative z-10 flex flex-col gap-4 lg:gap-5 sm:flex-row sm:items-center sm:justify-between">
 
           <div className="max-w-2xl">
             {/* CATEGORY */}
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#EFB059]/20 bg-[#EFB059]/10 px-3 py-1.5">
+            <div className="mb-2 lg:mb-4 inline-flex items-center gap-2 rounded-full border border-[#EFB059]/20 bg-[#EFB059]/10 px-3 py-1.5">
               <FiLock className="text-xs text-[#EFB059]" />
 
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#EFB059] sm:text-[11px]">
@@ -91,25 +91,25 @@ export default async function DocumentsPage({
               Belgeler
             </h1>
 
-            <p className="mt-3 max-w-xl text-[12px] leading-[1.8] text-white/70 sm:text-[13px] lg:text-[14px]">
+            <p className="mt-2 lg:mt-3 max-w-xl text-[12px] leading-[1.8] text-white/70 sm:text-[13px] lg:text-[14px]">
               Belgelerinizi yükleyin, arşivleyin ve
               ihtiyaç duyduğunuzda güvenle indirin.
               Bu belgeler web sitesinde yayınlanmaz.
             </p>
 
             <div className="mt-5 inline-flex items-center gap-2 text-[11px] text-white/70 sm:text-xs">
-              <FiShield className="shrink-0 text-[#EFB059]" />
+              <FiShield className="shrink-0 text-[#EFB059] text-[13px] lg:text-[15px]" />
               <span>Yalnızca yetkili panel kullanıcıları</span>
             </div>
           </div>
 
           {/* DOCUMENT COUNT */}
-          <div className="w-fit rounded-xl border border-white/15 bg-white/[0.07] px-5 py-4 backdrop-blur-sm">
+          <div className="w-fit rounded-xl border border-white/15 bg-white/[0.07] px-4 lg:px-5 py-2.5 lg:py-4 backdrop-blur-sm">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
               Toplam Belge
             </p>
 
-            <p className="mt-1 text-[27px] font-bold text-white sm:text-[32px]">
+            <p className="mt-1 text-[24px] font-bold text-white sm:text-[28px] lg:text-[32px]">
               {documents.length}
             </p>
           </div>
