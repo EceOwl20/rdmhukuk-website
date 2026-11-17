@@ -7,9 +7,6 @@ import {
   getDocumentFile,
 } from "@/lib/content-store";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 const privateHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
   "X-Content-Type-Options": "nosniff",

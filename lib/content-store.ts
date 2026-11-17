@@ -8,6 +8,7 @@ import {
   readFile,
   readdir,
   rename,
+  rmdir,
   stat,
   unlink,
   writeFile,
@@ -17,8 +18,14 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { defaultSiteContent } from "@/lib/default-site-content";
 import { AdminFormError } from "@/lib/admin-form-error";
-import type { SiteContent, StoredDocument, StoredImage } from "@/lib/site-content-types";
+import type {
+  SiteContent,
+  StoredDocument,
+  StoredImage,
+} from "@/lib/site-content-types";
 import { constants } from "node:fs";
+import { setTimeout as sleep } from "node:timers/promises";
+import sharp from "sharp";
 
 const storageRoot = path.resolve(
   process.env.CONTENT_STORAGE_PATH || path.join(process.cwd(), "uploads"),
@@ -42,7 +49,9 @@ function hasString(value: Record<string, unknown>, key: string) {
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
 function isTitledItem(value: unknown, idType: "string" | "number") {
@@ -83,7 +92,8 @@ function isBlogPost(value: unknown) {
     hasString(value, "excerpt") &&
     hasString(value, "category") &&
     hasString(value, "author") &&
-    (value.publishedAt === undefined || typeof value.publishedAt === "string") &&
+    (value.publishedAt === undefined ||
+      typeof value.publishedAt === "string") &&
     (value.coverImage === undefined || typeof value.coverImage === "string") &&
     Array.isArray(value.content) &&
     value.content.every(isBlogBlock)
@@ -163,13 +173,16 @@ function isStoredImage(value: unknown): value is StoredImage {
     hasString(value, "createdAt") &&
     hasString(value, "url") &&
     (value.sha256 === undefined || typeof value.sha256 === "string") &&
-    (value.source === undefined || value.source === "upload" || value.source === "site")
+    (value.source === undefined ||
+      value.source === "upload" ||
+      value.source === "site")
   );
 }
 
 const isStoredDocumentList: JsonValidator<StoredDocument[]> = (
   value,
-): value is StoredDocument[] => Array.isArray(value) && value.every(isStoredDocument);
+): value is StoredDocument[] =>
+  Array.isArray(value) && value.every(isStoredDocument);
 
 const isStoredImageList: JsonValidator<StoredImage[]> = (
   value,
@@ -219,7 +232,9 @@ async function writeJsonAtomic<T>(
   validator: JsonValidator<T>,
 ) {
   if (!validator(value)) {
-    throw new AdminFormError(`${label} için geçersiz veri oluşturuldu. İşlem durduruldu.`);
+    throw new AdminFormError(
+      `${label} için geçersiz veri oluşturuldu. İşlem durduruldu.`,
+    );
   }
 
   const previousValue = await readJsonFile(filePath, label, validator);
@@ -241,11 +256,250 @@ async function writeJsonAtomic<T>(
   await rename(temporaryPath, filePath);
 }
 
+const CONTENT_LOCK_PATH = `${contentFile}.lock`;
+const DOCUMENT_LOCK_PATH = `${documentsFile}.lock`;
+const IMAGE_LOCK_PATH = `${imagesFile}.lock`;
+const LOCK_OWNER_FILE = "owner";
+const LOCK_STALE_AFTER_MS = 15 * 60 * 1000;
+const LOCK_MAX_ATTEMPTS = 100;
+const LOCK_RETRY_DELAY_MS = 100;
+
+async function quarantineStaleLock(lockPath: string, label: string) {
+  const ownerPath = path.join(lockPath, LOCK_OWNER_FILE);
+  let modifiedAt: number;
+
+  try {
+    modifiedAt = (await stat(ownerPath)).mtimeMs;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+
+    if (code !== "ENOENT") throw error;
+
+    try {
+      modifiedAt = (await stat(lockPath)).mtimeMs;
+    } catch (lockError) {
+      if ((lockError as NodeJS.ErrnoException).code === "ENOENT") return true;
+      throw lockError;
+    }
+  }
+
+  if (Date.now() - modifiedAt <= LOCK_STALE_AFTER_MS) return false;
+
+  const stalePath = `${lockPath}.${randomUUID()}.stale`;
+
+  try {
+    await rename(lockPath, stalePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return true;
+    throw error;
+  }
+
+  try {
+    await unlink(path.join(stalePath, LOCK_OWNER_FILE));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.error(`${label} eski kilit sahibi temizlenemedi:`, error);
+    }
+  }
+
+  try {
+    await rmdir(stalePath);
+  } catch (error) {
+    console.error(`${label} eski kilit karantinası temizlenemedi:`, error);
+  }
+
+  return true;
+}
+
+async function withStorageLock<T>({
+  lockPath,
+  label,
+  busyMessage,
+  operation,
+}: {
+  lockPath: string;
+  label: string;
+  busyMessage: string;
+  operation: () => Promise<T>;
+}): Promise<T> {
+  await ensureStorage();
+
+  const ownerToken = randomUUID();
+  const ownerPath = path.join(lockPath, LOCK_OWNER_FILE);
+  let locked = false;
+
+  for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt++) {
+    try {
+      await mkdir(lockPath, { mode: 0o700 });
+
+      try {
+        await writeFile(ownerPath, ownerToken, {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        });
+      } catch (error) {
+        try {
+          await rmdir(lockPath);
+        } catch (cleanupError) {
+          console.error(`${label} yarım kalan kilidi temizlenemedi:`, cleanupError);
+        }
+
+        throw error;
+      }
+
+      locked = true;
+      break;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+
+      if (code !== "EEXIST") throw error;
+
+      if (await quarantineStaleLock(lockPath, label)) continue;
+
+      if (attempt < LOCK_MAX_ATTEMPTS - 1) {
+        await sleep(LOCK_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  if (!locked) throw new AdminFormError(busyMessage);
+
+  try {
+    return await operation();
+  } finally {
+    try {
+      const currentOwner = await readFile(ownerPath, "utf8");
+
+      if (currentOwner !== ownerToken) {
+        console.error(`${label} kilidi sahiplik değiştiği için kaldırılmadı.`);
+      } else {
+        await unlink(ownerPath);
+        await rmdir(lockPath);
+      }
+    } catch (error) {
+      console.error(`${label} kilidi kaldırılamadı:`, error);
+    }
+  }
+}
+
+async function withContentLock<T>(operation: () => Promise<T>): Promise<T> {
+  return withStorageLock({
+    lockPath: CONTENT_LOCK_PATH,
+    label: "İçerik",
+    busyMessage: "Site içerikleri şu anda başka bir işlem tarafından güncelleniyor.",
+    operation,
+  });
+}
+
+async function withDocumentLock<T>(operation: () => Promise<T>): Promise<T> {
+  return withStorageLock({
+    lockPath: DOCUMENT_LOCK_PATH,
+    label: "Belge arşivi",
+    busyMessage:
+      "Belge arşivi şu anda başka bir işlem tarafından kullanılıyor. Lütfen daha sonra tekrar deneyin.",
+    operation,
+  });
+}
+
+async function withImageLock<T>(operation: () => Promise<T>): Promise<T> {
+  return withStorageLock({
+    lockPath: IMAGE_LOCK_PATH,
+    label: "Görsel kütüphanesi",
+    busyMessage: "Görsel kütüphanesi şu anda başka bir işlem tarafından kullanılıyor.",
+    operation,
+  });
+}
+
 async function readSiteContentFile(): Promise<SiteContent> {
   return (
     (await readJsonFile(contentFile, "Site içerik dosyası", isSiteContent)) ??
     structuredClone(defaultSiteContent)
   );
+}
+
+export async function updateSiteContent(
+  updater: (content: SiteContent) => Promise<void> | void,
+): Promise<void> {
+  await withContentLock(async () => {
+    const currentContent = await readSiteContentFile();
+    const nextContent = structuredClone(currentContent);
+
+    await updater(nextContent);
+
+    // Sadece yeni eklenen görsel referanslarını belirle.
+    const previousImages = getReferencedUploadedImages(currentContent);
+
+    const nextImages = getReferencedUploadedImages(nextContent);
+
+    const addedImages = [...nextImages].filter(
+      (url) => !previousImages.has(url),
+    );
+
+    // Kilit sırası: içerik -> görsel.
+    await withImageLock(async () => {
+      const savedImages =
+        (await readJsonFile(
+          imagesFile,
+          "Görsel kayıt dosyası",
+          isStoredImageList,
+        )) ?? [];
+
+      for (const url of addedImages) {
+        const match = url.match(
+          /^\/uploads\/images\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|png|webp|gif))$/i,
+        );
+
+        if (!match) {
+          throw new AdminFormError(
+            "İçerikte geçersiz görsel adresi bulunuyor.",
+          );
+        }
+
+        const storedName = match[1];
+
+        const registeredImage = savedImages.find(
+          (image) =>
+            image.storedName === storedName &&
+            image.url === url &&
+            image.source !== "site",
+        );
+
+        if (!registeredImage) {
+          throw new AdminFormError(
+            "Seçilen görsel kütüphanede kayıtlı değil. Lütfen görseli tekrar yükleyin.",
+          );
+        }
+
+        const filePath = path.resolve(imagesDirectory, storedName);
+
+        if (path.dirname(filePath) !== imagesDirectory) {
+          throw new AdminFormError("Görsel dosyasının yolu geçersiz.");
+        }
+
+        let fileInfo;
+
+        try {
+          fileInfo = await lstat(filePath);
+        } catch {
+          throw new AdminFormError(
+            "Seçilen görsellerden biri artık mevcut değil. Lütfen görseli tekrar seçin.",
+          );
+        }
+
+        if (!fileInfo.isFile() || fileInfo.isSymbolicLink()) {
+          throw new AdminFormError("Seçilen görsel dosyası güvenli değil.");
+        }
+      }
+
+      await writeJsonAtomic(
+        contentFile,
+        nextContent,
+        "Site içerik dosyası",
+        isSiteContent,
+      );
+    });
+  });
 }
 
 export async function getSiteContent(): Promise<SiteContent> {
@@ -256,329 +510,571 @@ export async function getSiteContent(): Promise<SiteContent> {
   return readSiteContentFile();
 }
 
-export async function writeSiteContent(content: SiteContent) {
-  await writeJsonAtomic(contentFile, content, "Site içerik dosyası", isSiteContent);
-}
-
 export async function getDocuments(): Promise<StoredDocument[]> {
   return (
-    (await readJsonFile(documentsFile, "Belge kayıt dosyası", isStoredDocumentList)) ?? []
+    (await readJsonFile(
+      documentsFile,
+      "Belge kayıt dosyası",
+      isStoredDocumentList,
+    )) ?? []
   );
+}
+
+export async function getPublicImageFile(segments: string[]) {
+  if (segments.length !== 1) return null;
+
+  const [storedName] = segments;
+  const safeStoredNamePattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|webp|gif|svg)$/i;
+
+  if (!safeStoredNamePattern.test(storedName)) return null;
+
+  const requestedPath = path.resolve(imagesDirectory, storedName);
+  if (path.dirname(requestedPath) !== imagesDirectory) return null;
+
+  let fileHandle;
+
+  try {
+    fileHandle = await open(
+      requestedPath,
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    );
+    const fileStat = await fileHandle.stat();
+
+    if (!fileStat.isFile() || fileStat.size > MAX_IMAGE_SIZE) return null;
+
+    return await fileHandle.readFile();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+
+    if (code === "ENOENT" || code === "ENOTDIR" || code === "ELOOP") {
+      return null;
+    }
+
+    throw error;
+  } finally {
+    await fileHandle?.close();
+  }
 }
 
 export async function getImages(): Promise<StoredImage[]> {
   await ensureStorage();
   const savedImages =
-    (await readJsonFile(imagesFile, "Görsel kayıt dosyası", isStoredImageList)) ?? [];
+    (await readJsonFile(
+      imagesFile,
+      "Görsel kayıt dosyası",
+      isStoredImageList,
+    )) ?? [];
 
   const savedNames = new Set(savedImages.map((image) => image.storedName));
-  const orphanNames = (await readdir(imagesDirectory)).filter((name) => !savedNames.has(name));
-  const orphanImages = await Promise.all(orphanNames.map(async (storedName): Promise<StoredImage> => {
-    const fileStat = await stat(path.join(imagesDirectory, storedName));
-    const extension = path.extname(storedName).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-      ".webp": "image/webp",
-      ".gif": "image/gif",
-      ".svg": "image/svg+xml",
-    };
-    return {
-      id: storedName,
-      name: storedName,
-      storedName,
-      mimeType: mimeTypes[extension] || "application/octet-stream",
-      size: fileStat.size,
-      createdAt: fileStat.birthtime.toISOString(),
-      url: `/uploads/images/${storedName}`,
-      source: "upload",
-    };
-  }));
+  const safeImageNamePattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/i;
 
-  async function readSiteImages(directory: string, relativeDirectory = ""): Promise<StoredImage[]> {
+  const orphanNames = (await readdir(imagesDirectory)).filter(
+    (name) => !savedNames.has(name) && safeImageNamePattern.test(name),
+  );
+
+  const orphanImages = (
+    await Promise.all(
+      orphanNames.map(async (storedName): Promise<StoredImage | null> => {
+        const filePath = path.join(imagesDirectory, storedName);
+
+        let fileStat;
+
+        try {
+          fileStat = await lstat(filePath);
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+
+          // Tarama sırasında kaldırılmış dosyayı atla.
+          if (code === "ENOENT") {
+            return null;
+          }
+
+          throw error;
+        }
+
+        if (!fileStat.isFile() || fileStat.isSymbolicLink()) {
+          return null;
+        }
+
+        const extension = path.extname(storedName).toLowerCase();
+
+        const mimeTypes: Record<string, string> = {
+          ".jpg": "image/jpeg",
+          ".png": "image/png",
+          ".webp": "image/webp",
+          ".gif": "image/gif",
+        };
+
+        const mimeType = mimeTypes[extension];
+
+        if (!mimeType) {
+          return null;
+        }
+
+        return {
+          id: storedName,
+          name: storedName,
+          storedName,
+          mimeType,
+          size: fileStat.size,
+          createdAt: fileStat.birthtime.toISOString(),
+          url: `/uploads/images/${storedName}`,
+          source: "upload",
+        };
+      }),
+    )
+  ).filter((image): image is StoredImage => image !== null);
+
+  async function readSiteImages(
+    directory: string,
+    relativeDirectory = "",
+  ): Promise<StoredImage[]> {
     let entries;
     try {
       entries = await readdir(directory, { withFileTypes: true });
     } catch {
       return [];
     }
-    const nested = await Promise.all(entries.map(async (entry): Promise<StoredImage[]> => {
-      const relativeName = path.posix.join(relativeDirectory, entry.name);
-      const absoluteName = path.join(directory, entry.name);
-      if (entry.isDirectory()) return readSiteImages(absoluteName, relativeName);
-      const extension = path.extname(entry.name).toLowerCase();
-      const mimeTypes: Record<string, string> = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-        ".svg": "image/svg+xml",
-      };
-      if (!mimeTypes[extension]) return [];
-      const fileStat = await stat(absoluteName);
-      return [{
-        id: `site-${relativeName}`,
-        name: relativeName,
-        storedName: relativeName,
-        mimeType: mimeTypes[extension],
-        size: fileStat.size,
-        createdAt: fileStat.birthtime.toISOString(),
-        url: `/images/${relativeName}`,
-        source: "site",
-      }];
-    }));
+    const nested = await Promise.all(
+      entries.map(async (entry): Promise<StoredImage[]> => {
+        const relativeName = path.posix.join(relativeDirectory, entry.name);
+        const absoluteName = path.join(directory, entry.name);
+        if (entry.isDirectory())
+          return readSiteImages(absoluteName, relativeName);
+        const extension = path.extname(entry.name).toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".png": "image/png",
+          ".webp": "image/webp",
+          ".gif": "image/gif",
+          ".svg": "image/svg+xml",
+        };
+        if (!mimeTypes[extension]) return [];
+        const fileStat = await stat(absoluteName);
+        return [
+          {
+            id: `site-${relativeName}`,
+            name: relativeName,
+            storedName: relativeName,
+            mimeType: mimeTypes[extension],
+            size: fileStat.size,
+            createdAt: fileStat.birthtime.toISOString(),
+            url: `/images/${relativeName}`,
+            source: "site",
+          },
+        ];
+      }),
+    );
     return nested.flat();
   }
 
   const siteImages = await readSiteImages(publicImagesDirectory);
   return [
-    ...savedImages.map((image) => ({ ...image, source: image.source || "upload" as const })),
+    ...savedImages.map((image) => ({
+      ...image,
+      source: image.source || ("upload" as const),
+    })),
     ...orphanImages,
     ...siteImages,
   ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
-export async function saveImage(file: File): Promise<string> {
-  const allowedTypes = new Map([
-    ["image/jpeg", ".jpg"],
-    ["image/png", ".png"],
-    ["image/webp", ".webp"],
-    ["image/gif", ".gif"],
-  ]);
-  const extension = allowedTypes.get(file.type);
-  if (!extension) throw new AdminFormError("Yalnızca JPG, PNG, WebP veya GIF yüklenebilir.");
-  if (file.size > 8 * 1024 * 1024) throw new AdminFormError("Görsel en fazla 8 MB olabilir.");
+function getReferencedUploadedImages(content: SiteContent): Set<string> {
+  const urls = [
+    content.home.heroDesktopImage,
+    content.home.heroMobileImage,
+    content.home.about.desktopImage,
+    content.home.about.mobileImage,
+    content.home.staff.image,
+    content.contact.heroImage,
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const sha256 = createHash("sha256").update(buffer).digest("hex");
-  const existing = (await getImages()).find((image) => image.sha256 === sha256);
-  if (existing) return existing.url;
+    ...content.blog.posts.flatMap((post) => [
+      post.coverImage,
+      ...post.content.flatMap((block) =>
+        "type" in block && block.type === "image" ? [block.src] : [],
+      ),
+    ]),
+  ];
 
-  await ensureStorage();
-  const storedName = `${randomUUID()}${extension}`;
-  const url = `/uploads/images/${storedName}`;
-  await writeFile(path.join(imagesDirectory, storedName), buffer);
-  const images = await getImages();
-  const image: StoredImage = {
-    id: randomUUID(),
-    name: file.name.slice(0, 180),
-    storedName,
-    mimeType: file.type,
-    size: file.size,
-    createdAt: new Date().toISOString(),
-    url,
-    sha256,
-    source: "upload",
-  };
-  await writeJsonAtomic(
-    imagesFile,
-    [
-      image,
-      ...images.filter((item) => item.source !== "site" && item.storedName !== storedName),
-    ],
-    "Görsel kayıt dosyası",
-    isStoredImageList,
+  return new Set(
+    urls.filter(
+      (url): url is string =>
+        typeof url === "string" && url.startsWith("/uploads/images/"),
+    ),
   );
-  return url;
 }
 
+
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 24_000_000;
+const MAX_IMAGE_FRAMES = 30;
+
+const IMAGE_FORMATS = {
+  "image/jpeg": {
+    format: "jpeg",
+    extension: ".jpg",
+  },
+  "image/png": {
+    format: "png",
+    extension: ".png",
+  },
+  "image/webp": {
+    format: "webp",
+    extension: ".webp",
+  },
+  "image/gif": {
+    format: "gif",
+    extension: ".gif",
+  },
+} as const;
+
+type AllowedImageMime = keyof typeof IMAGE_FORMATS;
+
+async function validateImageUpload(
+  file: File,
+): Promise<{
+  buffer: Buffer;
+  extension: string;
+}> {
+  if (
+    !file.size ||
+    file.size > MAX_IMAGE_SIZE
+  ) {
+    throw new AdminFormError(
+      "Görsel boş olamaz ve en fazla 8 MB olabilir.",
+    );
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      IMAGE_FORMATS,
+      file.type,
+    )
+  ) {
+    throw new AdminFormError(
+      "Yalnızca JPG, PNG, WebP veya GIF yüklenebilir.",
+    );
+  }
+
+  const imageType =
+    IMAGE_FORMATS[file.type as AllowedImageMime];
+
+  const buffer = Buffer.from(
+    await file.arrayBuffer(),
+  );
+
+  if (buffer.length !== file.size) {
+    throw new AdminFormError(
+      "Görsel dosyasının boyutu doğrulanamadı.",
+    );
+  }
+
+  try {
+    const options = {
+      animated: true,
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      failOn: "warning" as const,
+    };
+
+    const metadata = await sharp(
+      buffer,
+      options,
+    ).metadata();
+
+    if (metadata.format !== imageType.format) {
+      throw new AdminFormError(
+        "Dosyanın gerçek biçimi ile belirtilen tür uyuşmuyor.",
+      );
+    }
+
+const width = metadata.width;
+const height = metadata.pageHeight ?? metadata.height;
+const frames = metadata.pages ?? 1;
+
+if (
+  !width ||
+  !height ||
+  !Number.isSafeInteger(width) ||
+  !Number.isSafeInteger(height) ||
+  !Number.isSafeInteger(frames) ||
+  frames < 1 ||
+  frames > MAX_IMAGE_FRAMES ||
+  width * height * frames > MAX_IMAGE_PIXELS
+) {
+  throw new AdminFormError(
+    "Görselin çözünürlüğü veya animasyon kare sayısı izin verilen sınırı aşıyor.",
+  );
+}
+
+    if (
+      !width ||
+      !height ||
+      !Number.isSafeInteger(frames) ||
+      frames < 1 ||
+      frames > MAX_IMAGE_FRAMES ||
+      width * height * frames > MAX_IMAGE_PIXELS
+    ) {
+      throw new AdminFormError(
+        "Görselin çözünürlüğü veya animasyon kare sayısı izin verilen sınırı aşıyor.",
+      );
+    }
+
+    // Görsel verisini gerçekten çözümlemeyi dene.
+    await sharp(buffer, options).stats();
+
+    return {
+      buffer,
+      extension: imageType.extension,
+    };
+  } catch (error) {
+    if (error instanceof AdminFormError) {
+      throw error;
+    }
+
+    console.error(
+      "Görsel doğrulama hatası:",
+      error,
+    );
+
+    throw new AdminFormError(
+      "Görsel dosyası bozuk veya desteklenmeyen bir biçimde.",
+    );
+  }
+}
+
+
+export async function saveImage(
+  file: File,
+): Promise<string> {
+  // Sharp ile gerçek görsel biçimini doğrula.
+  const { buffer, extension } =
+    await validateImageUpload(file);
+
+  // Doğrulanan dosyanın SHA-256 değerini hesapla.
+  const sha256 = createHash("sha256")
+    .update(buffer)
+    .digest("hex");
+
+  return withImageLock(async () => {
+    // Yalnızca gerçek metadata kayıtlarını oku.
+    const images =
+      (await readJsonFile(
+        imagesFile,
+        "Görsel kayıt dosyası",
+        isStoredImageList,
+      )) ?? [];
+
+    // Aynı dosyanın tekrar yüklenmesini önle.
+    const existing = images.find(
+      (image) => image.sha256 === sha256 && image.source !== "site",
+    );
+
+    if (existing) {
+      const existingPath = path.resolve(imagesDirectory, existing.storedName);
+
+      const validStoredName =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/i.test(
+          existing.storedName,
+        );
+
+      if (
+        !validStoredName ||
+        path.dirname(existingPath) !== imagesDirectory ||
+        existing.url !== `/uploads/images/${existing.storedName}`
+      ) {
+        throw new AdminFormError("Mevcut görsel kaydı güvenli değil.");
+      }
+
+      const existingStat = await lstat(existingPath).catch(() => null);
+
+      if (
+        !existingStat ||
+        !existingStat.isFile() ||
+        existingStat.isSymbolicLink()
+      ) {
+        throw new AdminFormError(
+          "Görsel kaydı mevcut ancak dosyası geçersiz. Yönetici kontrolü gerekiyor.",
+        );
+      }
+
+      return existing.url;
+    }
+
+    const storedName = `${randomUUID()}${extension}`;
+    const url = `/uploads/images/${storedName}`;
+
+    const image: StoredImage = {
+      id: randomUUID(),
+      name: file.name.slice(0, 180),
+      storedName,
+      mimeType: file.type,
+      size: buffer.length,
+      createdAt: new Date().toISOString(),
+      url,
+      sha256,
+      source: "upload",
+    };
+
+    const filePath = path.join(imagesDirectory, storedName);
+
+    await writeFile(filePath, buffer, {
+      flag: "wx",
+      mode: 0o600,
+    });
+
+    try {
+      await writeJsonAtomic(
+        imagesFile,
+        [image, ...images],
+        "Görsel kayıt dosyası",
+        isStoredImageList,
+      );
+    } catch (error) {
+      try {
+        await unlink(filePath);
+      } catch (cleanupError) {
+        console.error("Kaydedilemeyen görsel temizlenemedi:", cleanupError);
+      }
+
+      throw error;
+    }
+
+    return url;
+  });
+}
 
 /* -----------------------------------------
    DELETE UPLOADED IMAGE
 ----------------------------------------- */
 
 export async function deleteImageById(id: string) {
-  await ensureStorage();
+  // Kilit sırası her zaman: içerik -> görsel.
+  return withContentLock(async () => {
+    return withImageLock(async () => {
+      const images =
+        (await readJsonFile(
+          imagesFile,
+          "Görsel kayıt dosyası",
+          isStoredImageList,
+        )) ?? [];
 
-  // 1. Görseli kayıtlı ID üzerinden bul.
-  const images = await getImages();
-  const image = images.find((item) => item.id === id);
+      const image = images.find((item) => item.id === id);
 
-  if (!image) {
-    throw new AdminFormError("Silinecek görsel bulunamadı.");
-  }
+      if (!image) {
+        throw new AdminFormError("Silinecek görsel bulunamadı.");
+      }
 
-  // 2. Site görsellerinin silinmesini engelle.
-  if (image.source !== "upload") {
-    throw new AdminFormError(
-      "Siteye ait varsayılan görseller silinemez."
-    );
-  }
+      if (image.source !== "upload") {
+        throw new AdminFormError("Siteye ait varsayılan görseller silinemez.");
+      }
 
-  // 3. Yalnızca uygulamanın oluşturduğu dosya
-  // isimlerinin silinmesine izin ver.
-  const validStoredName =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/i.test(
-      image.storedName
-    );
+      const validStoredName =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/i.test(
+          image.storedName,
+        );
 
-  if (!validStoredName) {
-    throw new AdminFormError(
-      "Görsel dosyasının adı güvenli değil."
-    );
-  }
+      if (!validStoredName) {
+        throw new AdminFormError("Görsel dosyasının adı güvenli değil.");
+      }
 
-  const expectedUrl = `/uploads/images/${image.storedName}`;
+      if (image.url !== `/uploads/images/${image.storedName}`) {
+        throw new AdminFormError("Görselin dosya yolu doğrulanamadı.");
+      }
 
-  if (image.url !== expectedUrl) {
-    throw new AdminFormError(
-      "Görselin dosya yolu doğrulanamadı."
-    );
-  }
-
-  // 4. Aynı dosyayı işaret eden başka kayıt
-  // bulunuyorsa silme.
-  const hasAnotherReference = images.some(
-    (item) =>
-      item.id !== image.id &&
-      (item.url === image.url ||
-        item.storedName === image.storedName)
-  );
-
-  if (hasAnotherReference) {
-    throw new AdminFormError(
-      "Bu görsel başka bir medya kaydıyla ilişkili."
-    );
-  }
-
-  // 5. Cache yerine doğrudan güncel içerik
-  // dosyasını oku.
-  const content = await readSiteContentFile();
-
-  const { home, contact, blog } = content;
-
-  // 6. Ana sayfa ve iletişim görselleri.
-  const pageImages = [
-    home.heroDesktopImage,
-    home.heroMobileImage,
-    home.about.desktopImage,
-    home.about.mobileImage,
-    home.staff.image,
-    contact.heroImage,
-  ];
-
-  const usedOnPage = pageImages.includes(image.url);
-
-  // 7. Blog kapakları ve blog içerik blokları.
-  const usedInBlog = blog.posts.some((post) => {
-    if (post.coverImage === image.url) {
-      return true;
-    }
-
-    return post.content.some(
-      (block) =>
-        "type" in block &&
-        block.type === "image" &&
-        block.src === image.url
-    );
-  });
-
-  if (usedOnPage || usedInBlog) {
-    throw new AdminFormError(
-      "Bu görsel şu anda bir sayfada veya blog yazısında kullanılıyor. Önce ilgili içerikteki görseli değiştirin."
-    );
-  }
-
-  // 8. Dosyanın gerçek konumunu doğrula.
-  const filePath = path.resolve(
-    imagesDirectory,
-    image.storedName
-  );
-
-  if (
-    path.dirname(filePath) !== imagesDirectory
-  ) {
-    throw new AdminFormError(
-      "Görselin dosya konumu geçersiz."
-    );
-  }
-
-  let fileInfo;
-
-  try {
-    fileInfo = await lstat(filePath);
-  } catch {
-    throw new AdminFormError(
-      "Görsel dosyası sunucuda bulunamadı."
-    );
-  }
-
-  if (
-    !fileInfo.isFile() ||
-    fileInfo.isSymbolicLink()
-  ) {
-    throw new AdminFormError(
-      "Yalnızca normal görsel dosyaları silinebilir."
-    );
-  }
-
-  // 9. JSON kaydını doğrudan oku.
-  // Orphan görseller images.json içinde
-  // bulunmayabileceği için getImages() listesini
-  // doğrudan JSON'a yazmıyoruz.
-  const savedImages =
-    (await readJsonFile(imagesFile, "Görsel kayıt dosyası", isStoredImageList)) ?? [];
-
-  const remainingImages = savedImages.filter(
-    (item) =>
-      item.id !== image.id &&
-      item.storedName !== image.storedName
-  );
-
-  // 10. Dosyayı önce geçici bir konuma taşı.
-  // Böylece JSON güncellemesi başarısız olursa
-  // dosyayı geri getirebiliriz.
-  const temporaryPath = path.join(
-    dataDirectory,
-    `${randomUUID()}.pending-delete`
-  );
-
-  try {
-    await rename(filePath, temporaryPath);
-  } catch {
-    throw new AdminFormError(
-      "Görsel dosyası silinmek üzere taşınamadı."
-    );
-  }
-
-  // 11. Görsel kütüphanesinden kaydı çıkar.
-  try {
-    await writeJsonAtomic(
-      imagesFile,
-      remainingImages,
-      "Görsel kayıt dosyası",
-      isStoredImageList,
-    );
-  } catch (error) {
-    try {
-      await rename(temporaryPath, filePath);
-    } catch (rollbackError) {
-      console.error(
-        "Görsel geri yüklenemedi:",
-        rollbackError
+      const hasAnotherReference = images.some(
+        (item) =>
+          item.id !== image.id &&
+          (item.url === image.url || item.storedName === image.storedName),
       );
-    }
 
-    throw new AdminFormError(
-      "Medya kayıtları güncellenemedi. İşlem tamamlanamadı."
-    );
-  }
+      if (hasAnotherReference) {
+        throw new AdminFormError(
+          "Bu görsel başka bir medya kaydıyla ilişkili.",
+        );
+      }
 
-  // 12. Geçici dosyayı fiziksel olarak kaldır.
-  try {
-    await unlink(temporaryPath);
-  } catch (error) {
-    console.error(
-      "Silinen görselin geçici dosyası temizlenemedi:",
-      error
-    );
-  }
+      // İçerik kilidi altındayken güncel dosyayı oku.
+      const content = await readSiteContentFile();
 
-  return true;
+      const referencedImages = getReferencedUploadedImages(content);
+
+      if (referencedImages.has(image.url)) {
+        throw new AdminFormError(
+          "Bu görsel bir sayfada veya blog yazısında kullanılıyor. Önce ilgili içerikten kaldırın.",
+        );
+      }
+
+      const filePath = path.resolve(imagesDirectory, image.storedName);
+
+      if (path.dirname(filePath) !== imagesDirectory) {
+        throw new AdminFormError("Görsel dosyasının konumu geçersiz.");
+      }
+
+      let fileInfo;
+
+      try {
+        fileInfo = await lstat(filePath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          throw new AdminFormError(
+            "Görsel dosyası bulunamadı. Kayıt korunuyor.",
+          );
+        }
+
+        throw error;
+      }
+
+      if (!fileInfo.isFile() || fileInfo.isSymbolicLink()) {
+        throw new AdminFormError(
+          "Yalnızca normal görsel dosyaları silinebilir.",
+        );
+      }
+
+      const remainingImages = images.filter(
+        (item) => item.id !== image.id && item.storedName !== image.storedName,
+      );
+
+      const temporaryPath = path.join(
+        dataDirectory,
+        `${randomUUID()}.pending-delete`,
+      );
+
+      await rename(filePath, temporaryPath);
+
+      try {
+        await writeJsonAtomic(
+          imagesFile,
+          remainingImages,
+          "Görsel kayıt dosyası",
+          isStoredImageList,
+        );
+      } catch (error) {
+        try {
+          await rename(temporaryPath, filePath);
+        } catch (rollbackError) {
+          console.error("Görsel geri yüklenemedi:", rollbackError);
+
+          throw new AdminFormError(
+            "Görsel kaydı güncellenemedi ve dosya geri yüklenemedi. Yönetici müdahalesi gerekiyor.",
+          );
+        }
+
+        throw error;
+      }
+
+      try {
+        await unlink(temporaryPath);
+      } catch (error) {
+        console.error("Silinen görselin geçici dosyası temizlenemedi:", error);
+      }
+
+      return true;
+    });
+  });
 }
-
 
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
 
@@ -588,8 +1084,7 @@ const DOCUMENT_TYPES = {
   ".docx":
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".xls": "application/vnd.ms-excel",
-  ".xlsx":
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ".txt": "text/plain",
 } as const;
 
@@ -605,17 +1100,10 @@ function isSafeDocumentStoredName(name: string) {
   return DOCUMENT_STORED_NAME_PATTERN.test(name);
 }
 
-function getDocumentExtension(
-  fileName: string,
-): DocumentExtension {
+function getDocumentExtension(fileName: string): DocumentExtension {
   const extension = path.extname(fileName).toLowerCase();
 
-  if (
-    !Object.prototype.hasOwnProperty.call(
-      DOCUMENT_TYPES,
-      extension,
-    )
-  ) {
+  if (!Object.prototype.hasOwnProperty.call(DOCUMENT_TYPES, extension)) {
     throw new AdminFormError(
       "Yalnızca PDF, Word, Excel ve TXT belgeleri yüklenebilir.",
     );
@@ -631,33 +1119,21 @@ function validateDocumentSignature(
   const pdfSignature = Buffer.from("%PDF-");
 
   const oleSignature = Buffer.from([
-    0xd0, 0xcf, 0x11, 0xe0,
-    0xa1, 0xb1, 0x1a, 0xe1,
+    0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
   ]);
 
-  const zipSignature = Buffer.from([
-    0x50, 0x4b, 0x03, 0x04,
-  ]);
+  const zipSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
   if (extension === ".pdf") {
-    return (
-      buffer.length >= 5 &&
-      buffer.subarray(0, 5).equals(pdfSignature)
-    );
+    return buffer.length >= 5 && buffer.subarray(0, 5).equals(pdfSignature);
   }
 
   if (extension === ".doc" || extension === ".xls") {
-    return (
-      buffer.length >= 8 &&
-      buffer.subarray(0, 8).equals(oleSignature)
-    );
+    return buffer.length >= 8 && buffer.subarray(0, 8).equals(oleSignature);
   }
 
   if (extension === ".docx" || extension === ".xlsx") {
-    return (
-      buffer.length >= 4 &&
-      buffer.subarray(0, 4).equals(zipSignature)
-    );
+    return buffer.length >= 4 && buffer.subarray(0, 4).equals(zipSignature);
   }
 
   if (extension === ".txt") {
@@ -677,20 +1153,13 @@ function validateDocumentSignature(
   return false;
 }
 
-
-
-
-export async function addDocument(
-  file: File,
-): Promise<StoredDocument> {
+export async function addDocument(file: File): Promise<StoredDocument> {
   if (!file.size) {
     throw new AdminFormError("Belge seçilmedi.");
   }
 
   if (file.size > MAX_DOCUMENT_SIZE) {
-    throw new AdminFormError(
-      "Belge en fazla 25 MB olabilir.",
-    );
+    throw new AdminFormError("Belge en fazla 25 MB olabilir.");
   }
 
   if (
@@ -698,9 +1167,7 @@ export async function addDocument(
     file.name.length > 180 ||
     /[\\/\x00-\x1f\x7f]/.test(file.name)
   ) {
-    throw new AdminFormError(
-      "Belge dosyasının adı geçersiz.",
-    );
+    throw new AdminFormError("Belge dosyasının adı geçersiz.");
   }
 
   const extension = getDocumentExtension(file.name);
@@ -711,9 +1178,7 @@ export async function addDocument(
     buffer.length !== file.size ||
     !validateDocumentSignature(buffer, extension)
   ) {
-    throw new AdminFormError(
-      "Dosyanın biçimi veya içeriği geçersiz.",
-    );
+    throw new AdminFormError("Dosyanın biçimi veya içeriği geçersiz.");
   }
 
   const storedName = `${randomUUID()}${extension}`;
@@ -728,172 +1193,135 @@ export async function addDocument(
   };
 
   // Kayıt dosyası bozuksa yeni belge yazma.
-  const documents = await getDocuments();
 
-  await ensureStorage();
+  return withDocumentLock(async () => {
+    // Kilit alındıktan sonra en güncel kayıtları oku.
+    const documents = await getDocuments();
 
-  const documentPath = path.join(
-    documentsDirectory,
-    storedName,
-  );
+    await ensureStorage();
 
-  // wx: Var olan dosyanın üzerine yazmayı engeller.
-  await writeFile(documentPath, buffer, {
-    flag: "wx",
-    mode: 0o600,
-  });
+    const documentPath = path.join(documentsDirectory, storedName);
 
-  try {
-    await writeJsonAtomic(
-      documentsFile,
-      [document, ...documents],
-      "Belge kayıt dosyası",
-      isStoredDocumentList,
-    );
-  } catch (error) {
+    await writeFile(documentPath, buffer, {
+      flag: "wx",
+      mode: 0o600,
+    });
+
     try {
-      await unlink(documentPath);
-    } catch (cleanupError) {
-      console.error(
-        "Belge yükleme geri alma işlemi başarısız:",
-        cleanupError,
+      await writeJsonAtomic(
+        documentsFile,
+        [document, ...documents],
+        "Belge kayıt dosyası",
+        isStoredDocumentList,
       );
+    } catch (error) {
+      try {
+        await unlink(documentPath);
+      } catch (cleanupError) {
+        console.error(
+          "Belge yükleme geri alma işlemi başarısız:",
+          cleanupError,
+        );
+      }
+
+      throw error;
     }
 
-    throw error;
-  }
-
-  return document;
+    return document;
+  });
 }
-
-
 
 export async function deleteDocumentById(id: string) {
   if (!DOCUMENT_UUID_PATTERN.test(id)) {
-    throw new AdminFormError(
-      "Geçersiz belge kimliği.",
-    );
+    throw new AdminFormError("Geçersiz belge kimliği.");
   }
 
-  const documents = await getDocuments();
+  return withDocumentLock(async () => {
+    const documents = await getDocuments();
 
-  const document = documents.find(
-    (item) => item.id === id,
-  );
+    const document = documents.find((item) => item.id === id);
 
-  if (!document) {
-    throw new AdminFormError(
-      "Silinecek belge bulunamadı.",
+    if (!document) {
+      throw new AdminFormError("Silinecek belge bulunamadı.");
+    }
+
+    if (!isSafeDocumentStoredName(document.storedName)) {
+      throw new AdminFormError("Belge dosyasının adı güvenli değil.");
+    }
+
+    const hasAnotherReference = documents.some(
+      (item) => item.id !== id && item.storedName === document.storedName,
     );
-  }
 
-  if (!isSafeDocumentStoredName(document.storedName)) {
-    throw new AdminFormError(
-      "Belge dosyasının adı güvenli değil.",
-    );
-  }
-
-  const hasAnotherReference = documents.some(
-    (item) =>
-      item.id !== id &&
-      item.storedName === document.storedName,
-  );
-
-  if (hasAnotherReference) {
-    throw new AdminFormError(
-      "Bu dosya başka bir belge kaydı tarafından kullanılıyor.",
-    );
-  }
-
-  const documentPath = path.resolve(
-    documentsDirectory,
-    document.storedName,
-  );
-
-  if (path.dirname(documentPath) !== documentsDirectory) {
-    throw new AdminFormError(
-      "Belge dosyasının yolu geçersiz.",
-    );
-  }
-
-  let fileInfo;
-
-  try {
-    fileInfo = await lstat(documentPath);
-  } catch (error) {
-    if (
-      (error as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
+    if (hasAnotherReference) {
       throw new AdminFormError(
-        "Belge dosyası sunucuda bulunamadı. Kayıt korunuyor.",
+        "Bu dosya başka bir belge kaydı tarafından kullanılıyor.",
       );
     }
 
-    throw error;
-  }
+    const documentPath = path.resolve(documentsDirectory, document.storedName);
 
-  if (
-    !fileInfo.isFile() ||
-    fileInfo.isSymbolicLink()
-  ) {
-    throw new AdminFormError(
-      "Yalnızca normal belge dosyaları silinebilir.",
-    );
-  }
+    if (path.dirname(documentPath) !== documentsDirectory) {
+      throw new AdminFormError("Belge dosyasının yolu geçersiz.");
+    }
 
-  await ensureStorage();
+    let fileInfo;
 
-  const temporaryPath = path.join(
-    documentsDirectory,
-    `${randomUUID()}.pending-document-delete`,
-  );
-
-  // Önce dosyayı geçici isme taşı.
-  await rename(documentPath, temporaryPath);
-
-  try {
-    await writeJsonAtomic(
-      documentsFile,
-      documents.filter((item) => item.id !== id),
-      "Belge kayıt dosyası",
-      isStoredDocumentList,
-    );
-  } catch (error) {
     try {
-      await rename(temporaryPath, documentPath);
-    } catch (rollbackError) {
-      console.error(
-        "Belge silme geri alma işlemi başarısız:",
-        rollbackError,
-      );
+      fileInfo = await lstat(documentPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new AdminFormError(
+          "Belge dosyası sunucuda bulunamadı. Kayıt korunuyor.",
+        );
+      }
 
-      throw new AdminFormError(
-        "Belge kaydı güncellenemedi ve dosya otomatik geri yüklenemedi. Yönetici kontrolü gerekiyor.",
-      );
+      throw error;
     }
 
-    throw error;
-  }
+    if (!fileInfo.isFile() || fileInfo.isSymbolicLink()) {
+      throw new AdminFormError("Yalnızca normal belge dosyaları silinebilir.");
+    }
 
-  // Metadata başarıyla güncellendikten sonra
-  // geçici dosyayı fiziksel olarak kaldır.
-  try {
-    await unlink(temporaryPath);
-  } catch (error) {
-    console.error(
-      "Silinen belgenin geçici dosyası temizlenemedi:",
-      error,
+    const temporaryPath = path.join(
+      documentsDirectory,
+      `${randomUUID()}.pending-document-delete`,
     );
-  }
-}
 
+    await rename(documentPath, temporaryPath);
+
+    try {
+      await writeJsonAtomic(
+        documentsFile,
+        documents.filter((item) => item.id !== id),
+        "Belge kayıt dosyası",
+        isStoredDocumentList,
+      );
+    } catch (error) {
+      try {
+        await rename(temporaryPath, documentPath);
+      } catch (rollbackError) {
+        console.error("Belge silme geri alma işlemi başarısız:", rollbackError);
+
+        throw new AdminFormError(
+          "Belge kaydı güncellenemedi ve dosya geri yüklenemedi. Yönetici kontrolü gerekiyor.",
+        );
+      }
+
+      throw error;
+    }
+
+    try {
+      await unlink(temporaryPath);
+    } catch (error) {
+      console.error("Silinen belgenin geçici dosyası temizlenemedi:", error);
+    }
+  });
+}
 
 export async function getDocumentFile(id: string) {
   // Yalnızca UUID biçimindeki belge ID'lerini kabul et.
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-  if (!uuidPattern.test(id)) {
+  if (!DOCUMENT_UUID_PATTERN.test(id)) {
     return null;
   }
 
@@ -904,16 +1332,12 @@ export async function getDocumentFile(id: string) {
     return null;
   }
 
-  // Yalnızca uygulamanın ürettiği dosya adlarına izin ver.
-// Yalnızca güvenli dosya adlarına izin ver.
-if (!isSafeDocumentStoredName(document.storedName)) {
-  return null;
-}
+  // Yalnızca güvenli dosya adlarına izin ver.
+  if (!isSafeDocumentStoredName(document.storedName)) {
+    return null;
+  }
 
-  const filePath = path.resolve(
-    documentsDirectory,
-    document.storedName,
-  );
+  const filePath = path.resolve(documentsDirectory, document.storedName);
 
   // Dosyanın belgeler dizini içerisinde kalmasını doğrula.
   if (path.dirname(filePath) !== documentsDirectory) {
@@ -931,10 +1355,7 @@ if (!isSafeDocumentStoredName(document.storedName)) {
 
     const fileStat = await fileHandle.stat();
 
-    if (
-      !fileStat.isFile() ||
-      fileStat.size > 25 * 1024 * 1024
-    ) {
+    if (!fileStat.isFile() || fileStat.size > 25 * 1024 * 1024) {
       return null;
     }
 
@@ -947,11 +1368,7 @@ if (!isSafeDocumentStoredName(document.storedName)) {
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
 
-    if (
-      code === "ENOENT" ||
-      code === "ENOTDIR" ||
-      code === "ELOOP"
-    ) {
+    if (code === "ENOENT" || code === "ENOTDIR" || code === "ELOOP") {
       return null;
     }
 
@@ -960,4 +1377,3 @@ if (!isSafeDocumentStoredName(document.storedName)) {
     await fileHandle?.close();
   }
 }
-

@@ -12,10 +12,9 @@ import {
 import {
   addDocument,
   deleteDocumentById,
-  getSiteContent,
   saveImage,
-  writeSiteContent,
   deleteImageById,
+  updateSiteContent
 } from "@/lib/content-store";
 import {
   createTask,
@@ -150,42 +149,9 @@ export async function logoutAction() {
   redirect("/yonetim/giris");
 }
 
+
 async function updateHomeMutation(formData: FormData) {
   await requireAdmin();
-  const content = await getSiteContent();
-  content.home.servicesTitle = required(formData, "servicesTitle", 100);
-  content.home.servicesIntro = required(formData, "servicesIntro", 3000);
-
-  content.home.heroSlides = content.home.heroSlides.map((slide, index) => ({
-    ...slide,
-    title: required(formData, `heroTitle_${index}`, 150),
-    description: required(formData, `heroDescription_${index}`, 1000),
-  }));
-  content.home.services = content.home.services.map((service, index) => ({
-    ...service,
-    title: required(formData, `serviceTitle_${index}`, 180),
-    description: required(formData, `serviceDescription_${index}`, 2500),
-  }));
-  content.home.serviceSlides = content.home.serviceSlides.map((service, index) => ({
-    ...service,
-    title: required(formData, `serviceSlideTitle_${index}`, 180),
-    description: required(formData, `serviceSlideDescription_${index}`, 2500),
-  }));
-  content.home.about = {
-    ...content.home.about,
-    title: required(formData, "aboutTitle", 120),
-    paragraphs: [0, 1, 2].map((index) => required(formData, `aboutParagraph_${index}`, 4000)),
-    lawyer: {
-      name: required(formData, "lawyerName", 150),
-      description: required(formData, "lawyerDescription", 4000),
-    },
-  };
-  content.home.staff = {
-    ...content.home.staff,
-    name: required(formData, "staffName", 150),
-    specialization: required(formData, "staffSpecialization", 250),
-    description: required(formData, "staffDescription", 4000),
-  };
 
   const imageFields = [
     ["heroDesktopImage", "heroDesktopImage"],
@@ -194,90 +160,378 @@ async function updateHomeMutation(formData: FormData) {
     ["aboutMobileImage", "about.mobileImage"],
     ["staffImage", "staff.image"],
   ] as const;
+
+  const imageUpdates: Record<string, string> = {};
+
+  // Görselleri içerik kilidinden önce hazırla.
   for (const [field, target] of imageFields) {
     const file = fileValue(formData, field);
-    const libraryImage = storedImageValue(formData, `${field}Library`);
+    const libraryImage = storedImageValue(
+      formData,
+      `${field}Library`,
+    );
+
     if (!file && !libraryImage) continue;
-    const image = file ? await saveImage(file) : libraryImage;
-    if (target === "heroDesktopImage") content.home.heroDesktopImage = image;
-    if (target === "heroMobileImage") content.home.heroMobileImage = image;
-    if (target === "about.desktopImage") content.home.about.desktopImage = image;
-    if (target === "about.mobileImage") content.home.about.mobileImage = image;
-    if (target === "staff.image") content.home.staff.image = image;
+
+    imageUpdates[target] = file
+      ? await saveImage(file)
+      : libraryImage;
   }
 
-  await writeSiteContent(content);
+  await updateSiteContent((content) => {
+    content.home.servicesTitle = required(
+      formData,
+      "servicesTitle",
+      100,
+    );
+
+    content.home.servicesIntro = required(
+      formData,
+      "servicesIntro",
+      3000,
+    );
+
+    content.home.heroSlides = content.home.heroSlides.map(
+      (slide, index) => ({
+        ...slide,
+        title: required(
+          formData,
+          `heroTitle_${index}`,
+          150,
+        ),
+        description: required(
+          formData,
+          `heroDescription_${index}`,
+          1000,
+        ),
+      }),
+    );
+
+    content.home.services = content.home.services.map(
+      (service, index) => ({
+        ...service,
+        title: required(
+          formData,
+          `serviceTitle_${index}`,
+          180,
+        ),
+        description: required(
+          formData,
+          `serviceDescription_${index}`,
+          2500,
+        ),
+      }),
+    );
+
+    content.home.serviceSlides =
+      content.home.serviceSlides.map(
+        (service, index) => ({
+          ...service,
+          title: required(
+            formData,
+            `serviceSlideTitle_${index}`,
+            180,
+          ),
+          description: required(
+            formData,
+            `serviceSlideDescription_${index}`,
+            2500,
+          ),
+        }),
+      );
+
+    content.home.about = {
+      ...content.home.about,
+      title: required(
+        formData,
+        "aboutTitle",
+        120,
+      ),
+      paragraphs: [0, 1, 2].map((index) =>
+        required(
+          formData,
+          `aboutParagraph_${index}`,
+          4000,
+        ),
+      ),
+      lawyer: {
+        name: required(
+          formData,
+          "lawyerName",
+          150,
+        ),
+        description: required(
+          formData,
+          "lawyerDescription",
+          4000,
+        ),
+      },
+    };
+
+    content.home.staff = {
+      ...content.home.staff,
+      name: required(
+        formData,
+        "staffName",
+        150,
+      ),
+      specialization: required(
+        formData,
+        "staffSpecialization",
+        250,
+      ),
+      description: required(
+        formData,
+        "staffDescription",
+        4000,
+      ),
+    };
+
+    // Hazırlanan görselleri güncel içeriğe uygula.
+    for (const [target, image] of Object.entries(imageUpdates)) {
+      if (target === "heroDesktopImage") {
+        content.home.heroDesktopImage = image;
+      }
+
+      if (target === "heroMobileImage") {
+        content.home.heroMobileImage = image;
+      }
+
+      if (target === "about.desktopImage") {
+        content.home.about.desktopImage = image;
+      }
+
+      if (target === "about.mobileImage") {
+        content.home.about.mobileImage = image;
+      }
+
+      if (target === "staff.image") {
+        content.home.staff.image = image;
+      }
+    }
+  });
+
   updateTag("site-content");
+
   return "/yonetim?durum=anasayfa-kaydedildi";
 }
 
+
+
 async function updateContactMutation(formData: FormData) {
   await requireAdmin();
-  const content = await getSiteContent();
+
   const phone = required(formData, "phone", 80);
   const email = required(formData, "email", 254);
-  content.contact = {
-    ...content.contact,
-    title: required(formData, "title", 100),
-    phone,
-    phoneHref: `tel:${phone.replace(/[^+\d]/g, "")}`,
-    email,
-    emailHref: `mailto:${email}`,
-    location: required(formData, "location", 180),
-    address: required(formData, "address", 600),
-    intro: required(formData, "intro", 2000),
-    mapEmbedUrl: required(formData, "mapEmbedUrl", 3000),
-  };
+
   const heroImage = fileValue(formData, "heroImage");
-  const heroLibraryImage = storedImageValue(formData, "heroImageLibrary");
-  if (heroImage) content.contact.heroImage = await saveImage(heroImage);
-  else if (heroLibraryImage) content.contact.heroImage = heroLibraryImage;
-  await writeSiteContent(content);
+
+  const heroLibraryImage = storedImageValue(
+    formData,
+    "heroImageLibrary",
+  );
+
+  // Görseli içerik kilidinden önce hazırla.
+  const newHeroImage = heroImage
+    ? await saveImage(heroImage)
+    : heroLibraryImage;
+
+  await updateSiteContent((content) => {
+    content.contact = {
+      ...content.contact,
+
+      title: required(
+        formData,
+        "title",
+        100,
+      ),
+
+      phone,
+
+      phoneHref: `tel:${phone.replace(/[^+\d]/g, "")}`,
+
+      email,
+
+      emailHref: `mailto:${email}`,
+
+      location: required(
+        formData,
+        "location",
+        180,
+      ),
+
+      address: required(
+        formData,
+        "address",
+        600,
+      ),
+
+      intro: required(
+        formData,
+        "intro",
+        2000,
+      ),
+
+      mapEmbedUrl: required(
+        formData,
+        "mapEmbedUrl",
+        3000,
+      ),
+
+      heroImage:
+        newHeroImage ||
+        content.contact.heroImage,
+    };
+  });
+
   updateTag("site-content");
+
   return "/yonetim?durum=iletisim-kaydedildi";
 }
 
+
 async function saveBlogPostMutation(formData: FormData) {
   await requireAdmin();
-  const content = await getSiteContent();
-  const id = value(formData, "id", 100) || crypto.randomUUID();
-  const title = required(formData, "title", 250);
-  const requestedSlug = slugify(value(formData, "slug", 120) || title);
-  if (!requestedSlug) throw new AdminFormError("Geçerli bir blog adresi oluşturulamadı.");
-  const duplicate = content.blog.posts.find((post) => post.slug === requestedSlug && post.id !== id);
-  if (duplicate) throw new AdminFormError("Bu blog adresi başka bir yazıda kullanılıyor.");
 
-  const existing = content.blog.posts.find((post) => post.id === id);
-  const coverFile = fileValue(formData, "coverImage");
-  const libraryCover = storedImageValue(formData, "coverImageLibrary");
-  const post: BlogPost = {
-    id,
-    slug: requestedSlug,
-    title,
-    excerpt: required(formData, "excerpt", 1000),
-    category: required(formData, "category", 120),
-    author: required(formData, "author", 160),
-    publishedAt: value(formData, "publishedAt", 10) || undefined,
-    coverImage: coverFile ? await saveImage(coverFile) : libraryCover || existing?.coverImage,
-    content: await parseBlogBlocks(formData),
-  };
-  content.blog.posts = existing
-    ? content.blog.posts.map((item) => (item.id === id ? post : item))
-    : [post, ...content.blog.posts];
-  await writeSiteContent(content);
+  const requestedId = value(formData, "id", 100);
+  const id = requestedId || crypto.randomUUID();
+
+  const title = required(
+    formData,
+    "title",
+    250,
+  );
+
+  const requestedSlug = slugify(
+    value(formData, "slug", 120) || title,
+  );
+
+  if (!requestedSlug) {
+    throw new AdminFormError(
+      "Geçerli bir blog adresi oluşturulamadı.",
+    );
+  }
+
+  // Form verilerini önceden doğrula.
+  const excerpt = required(
+    formData,
+    "excerpt",
+    1000,
+  );
+
+  const category = required(
+    formData,
+    "category",
+    120,
+  );
+
+  const author = required(
+    formData,
+    "author",
+    160,
+  );
+
+  const publishedAt =
+    value(formData, "publishedAt", 10) || undefined;
+
+  const coverFile = fileValue(
+    formData,
+    "coverImage",
+  );
+
+  const libraryCover = storedImageValue(
+    formData,
+    "coverImageLibrary",
+  );
+
+  // Görselleri kilitten önce hazırla.
+  const uploadedCover = coverFile
+    ? await saveImage(coverFile)
+    : null;
+
+  const blocks = await parseBlogBlocks(formData);
+
+  await updateSiteContent((content) => {
+    const duplicate = content.blog.posts.find(
+      (post) =>
+        post.slug === requestedSlug &&
+        post.id !== id,
+    );
+
+    if (duplicate) {
+      throw new AdminFormError(
+        "Bu blog adresi başka bir yazıda kullanılıyor.",
+      );
+    }
+
+    const existing = content.blog.posts.find(
+      (post) => post.id === id,
+    );
+
+    // Düzenleme istenmişse kayıt hâlâ var olmalı.
+    if (requestedId && !existing) {
+      throw new AdminFormError(
+        "Düzenlenecek blog yazısı bulunamadı.",
+      );
+    }
+
+    const post: BlogPost = {
+      id,
+      slug: requestedSlug,
+      title,
+      excerpt,
+      category,
+      author,
+      publishedAt,
+
+      coverImage:
+        uploadedCover ||
+        libraryCover ||
+        existing?.coverImage,
+
+      content: blocks,
+    };
+
+    content.blog.posts = existing
+      ? content.blog.posts.map((item) =>
+          item.id === id ? post : item,
+        )
+      : [post, ...content.blog.posts];
+  });
+
   updateTag("site-content");
+
   return "/yonetim/blog?durum=kaydedildi";
 }
 
+
+
 async function deleteBlogPostMutation(formData: FormData) {
   await requireAdmin();
-  const content = await getSiteContent();
+
   const id = required(formData, "id", 100);
-  content.blog.posts = content.blog.posts.filter((post) => post.id !== id);
-  await writeSiteContent(content);
+
+  await updateSiteContent((content) => {
+    const exists = content.blog.posts.some(
+      (post) => post.id === id,
+    );
+
+    if (!exists) {
+      throw new AdminFormError(
+        "Silinecek blog yazısı bulunamadı.",
+      );
+    }
+
+    content.blog.posts = content.blog.posts.filter(
+      (post) => post.id !== id,
+    );
+  });
+
   updateTag("site-content");
+
   return "/yonetim/blog?durum=silindi";
 }
+
 
 async function uploadDocumentMutation(formData: FormData) {
   await requireAdmin();
