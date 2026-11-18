@@ -12,6 +12,8 @@ Panelden anasayfa ve iletişim sayfası metin/görselleri, blog yazıları ve ya
 
 `content.json`, `documents.json` ve `images.json` dosyaları her okumada doğrulanır. Yalnızca dosya henüz yoksa başlangıç verisi kullanılır; okunamayan veya bozuk bir kayıt dosyası veri kaybını önlemek için panel işlemini durdurur. Başarılı her yazımdan önce ilgili dosyanın son geçerli sürümü aynı dizinde `.backup` uzantısıyla saklanır.
 
+Paylaşılabilir belgeler isteğe bağlı 6 haneli PIN ile korunabilir. PIN düz metin olarak saklanmaz; `DOCUMENT_SHARE_PIN_SECRET` tanımlanmazsa HMAC anahtarı olarak `SESSION_SECRET` kullanılır. Canlı sistemde kullanılan anahtar değiştirilirse mevcut PIN korumalı bağlantılar doğrulanamaz ve yeniden oluşturulmaları gerekir.
+
 ## İletişim formu rate limit
 
 İletişim formu denemeleri `uploads/data/contact-rate-limits.json` dosyasında ham IP veya e-posta adresi tutulmadan saklanır. IP başına 10 dakikada 3, e-posta başına 10 dakikada 2 ve IP başına 24 saatte 15 gönderim denemesine izin verilir. `CONTACT_RATE_LIMIT_SECRET` tanımlanmazsa HMAC anahtarı olarak `SESSION_SECRET` kullanılır.

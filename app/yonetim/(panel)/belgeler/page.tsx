@@ -21,7 +21,10 @@ import DocumentShareButton from "@/components/admin/DocumentShareButton";
 import AdminForm from "@/components/admin/AdminForm";
 import { SaveButton } from "@/components/admin/FormFields";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getDocuments } from "@/lib/content-store";
+import {
+  getActiveDocumentShares,
+  getDocuments,
+} from "@/lib/content-store";
 import DocumentFileInput from "@/components/admin/DocumentFileInput";
 
 type Props = {
@@ -51,7 +54,11 @@ function formatDate(value: string) {
 export default async function DocumentsPage({ searchParams }: Props) {
   await requireAdmin();
 
-  const [documents, params] = await Promise.all([getDocuments(), searchParams]);
+  const [documents, activeShares, params] = await Promise.all([
+    getDocuments(),
+    getActiveDocumentShares(),
+    searchParams,
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10 sm:space-y-6 lg:space-y-8">
@@ -303,6 +310,9 @@ export default async function DocumentsPage({ searchParams }: Props) {
                         <DocumentShareButton
                           documentId={document.id}
                           fileName={document.name}
+                          initialShares={activeShares.filter(
+                            (share) => share.documentId === document.id,
+                          )}
                         />
                       )}
 

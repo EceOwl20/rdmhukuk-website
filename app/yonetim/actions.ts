@@ -738,6 +738,7 @@ export async function deleteImageAction(
 export async function createDocumentShareAction(
   documentId: string,
   duration: DocumentShareDuration,
+  pin: string,
 ): Promise<DocumentShareActionResult> {
   // Kimlik doğrulamasını hata yakalama bloğının dışında tutuyoruz.
   // Yetkisiz erişimlerde mevcut requireAdmin davranışı korunur.
@@ -761,9 +762,14 @@ export async function createDocumentShareAction(
       throw new AdminFormError("Geçersiz paylaşım süresi.");
     }
 
+    if (typeof pin !== "string" || (pin !== "" && !/^\d{6}$/.test(pin))) {
+      throw new AdminFormError("Paylaşım PIN'i 6 rakamdan oluşmalıdır.");
+    }
+
     const share = await createDocumentShare(
       documentId,
       duration,
+      pin,
     );
 
     return {

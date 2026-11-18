@@ -60,9 +60,18 @@ export type StoredDocumentShare = {
   id: string;
   documentId: string;
   tokenHash: string;
+  pinHash?: string;
   createdAt: string;
   expiresAt: string;
   revokedAt?: string;
+};
+
+export type ActiveDocumentShare = {
+  shareId: string;
+  documentId: string;
+  pinProtected: boolean;
+  createdAt: string;
+  expiresAt: string;
 };
 
 

@@ -1,6 +1,12 @@
 import "server-only";
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import {
   lstat,
   mkdir,
@@ -19,6 +25,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { defaultSiteContent } from "@/lib/default-site-content";
 import { AdminFormError } from "@/lib/admin-form-error";
 import type {
+  ActiveDocumentShare,
   SiteContent,
   StoredDocument,
   StoredDocumentShare,
@@ -186,6 +193,9 @@ function isStoredDocumentShare(
     uuidPattern.test(value.documentId) &&
     typeof value.tokenHash === "string" &&
     /^[a-f0-9]{64}$/.test(value.tokenHash) &&
+    (value.pinHash === undefined ||
+      (typeof value.pinHash === "string" &&
+        /^[a-f0-9]{64}$/.test(value.pinHash))) &&
     isValidDate(value.createdAt) &&
     isValidDate(value.expiresAt) &&
     Date.parse(value.expiresAt) >
@@ -570,6 +580,26 @@ async function getDocumentShares(): Promise<StoredDocumentShare[]> {
       isStoredDocumentShareList,
     )) ?? []
   );
+}
+
+export async function getActiveDocumentShares(): Promise<
+  ActiveDocumentShare[]
+> {
+  const now = Date.now();
+
+  return (await getDocumentShares())
+    .filter(
+      (share) =>
+        share.revokedAt === undefined && Date.parse(share.expiresAt) > now,
+    )
+    .map((share) => ({
+      shareId: share.id,
+      documentId: share.documentId,
+      pinProtected: share.pinHash !== undefined,
+      createdAt: share.createdAt,
+      expiresAt: share.expiresAt,
+    }))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function getPublicImageFile(segments: string[]) {
@@ -1137,6 +1167,37 @@ const DOCUMENT_SHARE_DURATIONS = {
 export type DocumentShareDuration =
   keyof typeof DOCUMENT_SHARE_DURATIONS;
 
+function documentSharePinSecret() {
+  const secret =
+    process.env.DOCUMENT_SHARE_PIN_SECRET || process.env.SESSION_SECRET;
+
+  if (secret && secret.length >= 32) return secret;
+
+  if (process.env.NODE_ENV !== "production") {
+    return "rdm-local-document-share-pin-secret-2026";
+  }
+
+  throw new Error(
+    "DOCUMENT_SHARE_PIN_SECRET veya en az 32 karakterlik SESSION_SECRET tanımlı değil.",
+  );
+}
+
+function hashDocumentSharePin(shareId: string, pin: string) {
+  return createHmac("sha256", documentSharePinSecret())
+    .update(`document-share-pin:${shareId}:${pin}`)
+    .digest("hex");
+}
+
+function safeHashEqual(left: string, right: string) {
+  const leftBuffer = Buffer.from(left, "hex");
+  const rightBuffer = Buffer.from(right, "hex");
+
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
 
 const DOCUMENT_TYPES = {
@@ -1450,6 +1511,7 @@ export async function getDocumentFile(id: string) {
 export async function createDocumentShare(
   documentId: string,
   duration: DocumentShareDuration = "24h",
+  pin = "",
 ) {
   if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
     throw new AdminFormError("Geçersiz belge kimliği.");
@@ -1462,6 +1524,10 @@ export async function createDocumentShare(
     )
   ) {
     throw new AdminFormError("Geçersiz paylaşım süresi.");
+  }
+
+  if (pin !== "" && !/^\d{6}$/.test(pin)) {
+    throw new AdminFormError("Paylaşım PIN'i 6 rakamdan oluşmalıdır.");
   }
 
   return withDocumentLock(async () => {
@@ -1492,6 +1558,19 @@ export async function createDocumentShare(
 
     const shares = await getDocumentShares();
 
+    const hasActiveShare = shares.some(
+      (share) =>
+        share.documentId === documentId &&
+        share.revokedAt === undefined &&
+        Date.parse(share.expiresAt) > Date.now(),
+    );
+
+    if (hasActiveShare) {
+      throw new AdminFormError(
+        "Bu belge için zaten aktif bir paylaşım bağlantısı var. Yeni bağlantı oluşturmadan önce mevcut bağlantıyı iptal edin.",
+      );
+    }
+
     const token = randomBytes(32).toString("base64url");
 
     const tokenHash = createHash("sha256")
@@ -1504,10 +1583,13 @@ export async function createDocumentShare(
       now.getTime() + DOCUMENT_SHARE_DURATIONS[duration],
     );
 
+    const shareId = randomUUID();
+
     const share: StoredDocumentShare = {
-      id: randomUUID(),
+      id: shareId,
       documentId,
       tokenHash,
+      pinHash: pin ? hashDocumentSharePin(shareId, pin) : undefined,
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
     };
@@ -1531,6 +1613,7 @@ export async function createDocumentShare(
 
 export async function getDocumentByShareToken(
   token: string,
+  pin?: string,
 ) {
   if (
     typeof token !== "string" ||
@@ -1543,33 +1626,51 @@ export async function getDocumentByShareToken(
     .update(token)
     .digest("hex");
 
-  return withDocumentLock(async () => {
-    const shares = await getDocumentShares();
+  const shares = await getDocumentShares();
 
-    const share = shares.find(
-      (item) => item.tokenHash === tokenHash,
-    );
+  const share = shares.find(
+    (item) => item.tokenHash === tokenHash,
+  );
 
-    if (!share || share.revokedAt !== undefined) {
-      return null;
+  if (!share || share.revokedAt !== undefined) {
+    return null;
+  }
+
+  if (Date.parse(share.expiresAt) <= Date.now()) {
+    return null;
+  }
+
+  if (share.pinHash !== undefined) {
+    if (pin === undefined) {
+      return { status: "requires-pin" as const };
     }
 
-    if (Date.parse(share.expiresAt) <= Date.now()) {
-      return null;
+    if (
+      !/^\d{6}$/.test(pin) ||
+      !safeHashEqual(share.pinHash, hashDocumentSharePin(share.id, pin))
+    ) {
+      return { status: "invalid-pin" as const };
     }
+  }
 
-    const documents = await getDocuments();
+  const documents = await getDocuments();
 
-    const document = documents.find(
-      (item) => item.id === share.documentId,
-    );
+  const document = documents.find(
+    (item) => item.id === share.documentId,
+  );
 
-    if (!document || document.shareable !== true) {
-      return null;
-    }
+  if (!document || document.shareable !== true) {
+    return null;
+  }
 
-    return getDocumentFile(document.id);
-  });
+  const file = await getDocumentFile(document.id);
+
+  if (!file) return null;
+
+  return {
+    status: "ready" as const,
+    ...file,
+  };
 }
 
 
