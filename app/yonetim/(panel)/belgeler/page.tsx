@@ -17,14 +17,10 @@ import {
   deleteDocumentAction,
   uploadDocumentAction,
 } from "@/app/yonetim/actions";
-import DocumentShareButton from "@/components/admin/DocumentShareButton";
 import AdminForm from "@/components/admin/AdminForm";
 import { SaveButton } from "@/components/admin/FormFields";
 import { requireAdmin } from "@/lib/admin-auth";
-import {
-  getActiveDocumentShares,
-  getDocuments,
-} from "@/lib/content-store";
+import { getDocuments } from "@/lib/content-store";
 import DocumentFileInput from "@/components/admin/DocumentFileInput";
 
 type Props = {
@@ -54,11 +50,7 @@ function formatDate(value: string) {
 export default async function DocumentsPage({ searchParams }: Props) {
   await requireAdmin();
 
-  const [documents, activeShares, params] = await Promise.all([
-    getDocuments(),
-    getActiveDocumentShares(),
-    searchParams,
-  ]);
+  const [documents, params] = await Promise.all([getDocuments(), searchParams]);
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10 sm:space-y-6 lg:space-y-8">
@@ -157,28 +149,6 @@ export default async function DocumentsPage({ searchParams }: Props) {
             {/* FILE INPUT */}
             <DocumentFileInput />
 
-            {/* SHAREABLE OPTION */}
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-[#F8FAFD] px-4 py-4 transition-colors hover:border-[#EFB059]/50 sm:px-5">
-              <input
-                type="checkbox"
-                name="shareable"
-                value="true"
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[#152741]"
-              />
-
-              <span className="flex flex-col gap-1">
-                <span className="text-[12px] font-semibold text-[#152741] sm:text-[13px]">
-                  Bu belge paylaşılabilir
-                </span>
-
-                <span className="text-[11px] leading-5 text-slate-500 sm:text-xs">
-                  Paylaşılabilir belgeler için süreli ve güvenli erişim
-                  bağlantıları oluşturabilirsiniz. Belge otomatik olarak herkese
-                  açık hale gelmez.
-                </span>
-              </span>
-            </label>
-
             {/* UPLOAD FOOTER */}
             <div className="flex flex-col gap-3 rounded-xl bg-[#F3F6FA] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div className="flex items-start gap-2">
@@ -262,17 +232,10 @@ export default async function DocumentsPage({ searchParams }: Props) {
                         </h3>
 
                         <div className="mt-2">
-                          {document.shareable === true ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                              <FiShield className="text-xs" />
-                              Paylaşılabilir
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
-                              <FiLock className="text-xs" />
-                              Özel Belge
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                            <FiLock className="text-xs" />
+                            Özel Belge
+                          </span>
                         </div>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 sm:text-xs">
@@ -305,16 +268,6 @@ export default async function DocumentsPage({ searchParams }: Props) {
                         <FiDownload className="text-[15px]" />
                         İndir
                       </a>
-
-                      {document.shareable === true && (
-                        <DocumentShareButton
-                          documentId={document.id}
-                          fileName={document.name}
-                          initialShares={activeShares.filter(
-                            (share) => share.documentId === document.id,
-                          )}
-                        />
-                      )}
 
                       <AdminForm
                         action={deleteDocumentAction}

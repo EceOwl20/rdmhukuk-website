@@ -8,11 +8,9 @@ Panel `/yonetim` adresindedir. İlk çalıştırmadan önce `.env.example` dosya
 
 Yerel geliştirmede çevre değişkenleri tanımlı değilse `admin` / `admin123` bilgileriyle giriş yapılabilir. Bu geçici bilgiler production ortamında çalışmaz.
 
-Panelden anasayfa ve iletişim sayfası metin/görselleri, blog yazıları ve yalnızca panelde görünen özel belgeler yönetilir. İçerikler varsayılan olarak proje kökündeki `uploads` klasöründe tutulur. Canlı sunucuda bu klasörü kalıcı bir volume'a bağlayın veya `CONTENT_STORAGE_PATH` ile kalıcı dizini belirtin. Dağıtım sırasında bu dizin silinmemelidir.
+Panelden anasayfa ve iletişim sayfası metin/görselleri, blog yazıları ve yalnızca oturum açmış panel kullanıcısının görebildiği özel belgeler yönetilir. İçerikler varsayılan olarak proje kökündeki `uploads` klasöründe tutulur. Canlı sunucuda bu klasörü kalıcı bir volume'a bağlayın veya `CONTENT_STORAGE_PATH` ile kalıcı dizini belirtin. Dağıtım sırasında bu dizin silinmemelidir.
 
 `content.json`, `documents.json` ve `images.json` dosyaları her okumada doğrulanır. Yalnızca dosya henüz yoksa başlangıç verisi kullanılır; okunamayan veya bozuk bir kayıt dosyası veri kaybını önlemek için panel işlemini durdurur. Başarılı her yazımdan önce ilgili dosyanın son geçerli sürümü aynı dizinde `.backup` uzantısıyla saklanır.
-
-Paylaşılabilir belgeler isteğe bağlı 6 haneli PIN ile korunabilir. PIN düz metin olarak saklanmaz; `DOCUMENT_SHARE_PIN_SECRET` tanımlanmazsa HMAC anahtarı olarak `SESSION_SECRET` kullanılır. Canlı sistemde kullanılan anahtar değiştirilirse mevcut PIN korumalı bağlantılar doğrulanamaz ve yeniden oluşturulmaları gerekir.
 
 ## İletişim formu rate limit
 

@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 
 import { logoutAction } from "@/app/yonetim/actions";
+import { IoDocumentTextOutline } from "react-icons/io5";
 
 type MobileNavItem = {
   href: string;
@@ -25,10 +26,10 @@ type MobileNavItem = {
 };
 
 const items: MobileNavItem[] = [
-  { href: "/yonetim", label: "İçerikler", icon: FiGrid },
+  { href: "/yonetim/sayfa-icerik", label: "İçerikler", icon: IoDocumentTextOutline },
   { href: "/yonetim/gorevler", label: "Görevler", icon: FiClipboard },
+  { href: "/yonetim", label: "Genel", icon: FiGrid },
   { href: "/yonetim/blog", label: "Blog", icon: FiBookOpen },
-  { href: "/yonetim/gorseller", label: "Görseller", icon: FiImage },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -95,6 +96,17 @@ export default function MobileAdminNav() {
               >
                 <FiFolder className={`text-xl ${moreIsActive ? "text-[#EFB059]" : "text-slate-500"}`} />
                 <span className="flex-1">Belgeler</span>
+                <span className="text-sm opacity-60">›</span>
+              </Link>
+               <Link
+                href="/yonetim/gorseller"
+                onClick={() => setIsMoreOpen(false)}
+                className={`flex min-h-14 items-center gap-4 rounded-xl px-4 py-3 font-semibold ${
+                  moreIsActive ? "bg-[#152741] text-white" : "bg-slate-50 text-[#152741]"
+                }`}
+              >
+                <FiImage className={`text-xl ${moreIsActive ? "text-[#EFB059]" : "text-slate-500"}`} />
+                <span className="flex-1">Görseller</span>
                 <span className="text-sm opacity-60">›</span>
               </Link>
               <Link

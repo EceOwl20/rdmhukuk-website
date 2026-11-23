@@ -52,28 +52,7 @@ export type StoredDocument = {
   mimeType: string;
   size: number;
   createdAt: string;
-  shareable?: boolean;
 };
-
-
-export type StoredDocumentShare = {
-  id: string;
-  documentId: string;
-  tokenHash: string;
-  pinHash?: string;
-  createdAt: string;
-  expiresAt: string;
-  revokedAt?: string;
-};
-
-export type ActiveDocumentShare = {
-  shareId: string;
-  documentId: string;
-  pinProtected: boolean;
-  createdAt: string;
-  expiresAt: string;
-};
-
 
 export type StoredImage = {
   id: string;

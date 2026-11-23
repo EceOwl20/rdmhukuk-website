@@ -11,16 +11,10 @@ import {
 } from "@/lib/admin-auth";
 import {
   addDocument,
-  createDocumentShare,
   deleteDocumentById,
   deleteImageById,
-  revokeDocumentShare,
   saveImage,
   updateSiteContent,
-} from "@/lib/content-store";
-
-import type {
-  DocumentShareDuration,
 } from "@/lib/content-store";
 import {
   createTask,
@@ -95,27 +89,6 @@ async function runAdminMutation(
 
   redirect(redirectTo);
 }
-
-type DocumentShareActionResult =
-  | {
-      success: true;
-      shareId: string;
-      token: string;
-      expiresAt: string;
-    }
-  | {
-      success: false;
-      error: string;
-    };
-
-type RevokeDocumentShareActionResult =
-  | {
-      success: true;
-    }
-  | {
-      success: false;
-      error: string;
-    };
 
 async function parseBlogBlocks(formData: FormData): Promise<BlogContentBlock[]> {
   const blockCount = Number(value(formData, "blockCount", 3));
@@ -569,18 +542,7 @@ async function uploadDocumentMutation(formData: FormData) {
     throw new AdminFormError("Belge seçilmedi.");
   }
 
-  const rawShareable = formData.getAll("shareable");
-
-  if (
-    rawShareable.length > 1 ||
-    (rawShareable.length === 1 && rawShareable[0] !== "true")
-  ) {
-    throw new AdminFormError("Geçersiz belge paylaşım seçeneği.");
-  }
-
-  const shareable = rawShareable.length === 1;
-
-  await addDocument(file, shareable);
+  await addDocument(file);
 
   return "/yonetim/belgeler?durum=yuklendi";
 }
@@ -732,107 +694,6 @@ export async function deleteImageAction(
   formData: FormData,
 ) {
   return runAdminMutation(() => deleteImageMutation(formData));
-}
-
-
-export async function createDocumentShareAction(
-  documentId: string,
-  duration: DocumentShareDuration,
-  pin: string,
-): Promise<DocumentShareActionResult> {
-  // Kimlik doğrulamasını hata yakalama bloğının dışında tutuyoruz.
-  // Yetkisiz erişimlerde mevcut requireAdmin davranışı korunur.
-  await requireAdmin();
-
-  try {
-    if (
-      typeof documentId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        documentId,
-      )
-    ) {
-      throw new AdminFormError("Geçersiz belge kimliği.");
-    }
-
-    if (
-      duration !== "1h" &&
-      duration !== "24h" &&
-      duration !== "7d"
-    ) {
-      throw new AdminFormError("Geçersiz paylaşım süresi.");
-    }
-
-    if (typeof pin !== "string" || (pin !== "" && !/^\d{6}$/.test(pin))) {
-      throw new AdminFormError("Paylaşım PIN'i 6 rakamdan oluşmalıdır.");
-    }
-
-    const share = await createDocumentShare(
-      documentId,
-      duration,
-      pin,
-    );
-
-    return {
-      success: true,
-      shareId: share.shareId,
-      token: share.token,
-      expiresAt: share.expiresAt,
-    };
-  } catch (error) {
-    if (error instanceof AdminFormError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    console.error("Belge paylaşımı oluşturulamadı:", error);
-
-    return {
-      success: false,
-      error: "Paylaşım bağlantısı oluşturulamadı.",
-    };
-  }
-}
-
-
-export async function revokeDocumentShareAction(
-  shareId: string,
-): Promise<RevokeDocumentShareActionResult> {
-  await requireAdmin();
-
-  try {
-    if (
-      typeof shareId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        shareId,
-      )
-    ) {
-      throw new AdminFormError(
-        "Geçersiz paylaşım kimliği.",
-      );
-    }
-
-    await revokeDocumentShare(shareId);
-
-    return {
-      success: true,
-    };
-  } catch (error) {
-    if (error instanceof AdminFormError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    console.error("Belge paylaşımı iptal edilemedi:", error);
-
-    return {
-      success: false,
-      error: "Paylaşım bağlantısı iptal edilemedi.",
-    };
-  }
 }
 
 

@@ -1,12 +1,6 @@
 import "server-only";
 
-import {
-  createHash,
-  createHmac,
-  randomBytes,
-  randomUUID,
-  timingSafeEqual,
-} from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   lstat,
   mkdir,
@@ -25,10 +19,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { defaultSiteContent } from "@/lib/default-site-content";
 import { AdminFormError } from "@/lib/admin-form-error";
 import type {
-  ActiveDocumentShare,
   SiteContent,
   StoredDocument,
-  StoredDocumentShare,
   StoredImage,
 } from "@/lib/site-content-types";
 import { constants } from "node:fs";
@@ -44,7 +36,6 @@ const documentsDirectory = path.join(storageRoot, "documents");
 const publicImagesDirectory = path.join(process.cwd(), "public", "images");
 const contentFile = path.join(dataDirectory, "content.json");
 const documentsFile = path.join(dataDirectory, "documents.json");
-const documentSharesFile = path.join(dataDirectory, "document-shares.json");
 const imagesFile = path.join(dataDirectory, "images.json");
 
 type JsonValidator<T> = (value: unknown) => value is T;
@@ -166,53 +157,9 @@ function isStoredDocument(value: unknown): value is StoredDocument {
     hasString(value, "mimeType") &&
     typeof value.size === "number" &&
     Number.isFinite(value.size) &&
-    hasString(value, "createdAt") &&
-    (value.shareable === undefined ||
-       typeof value.shareable === "boolean")
+    hasString(value, "createdAt")
   );
 }
-
-
-
-function isStoredDocumentShare(
-  value: unknown,
-): value is StoredDocumentShare {
-  if (!isRecord(value)) return false;
-
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4,12}$/i;
-
-  const isValidDate = (date: unknown): date is string =>
-    typeof date === "string" &&
-    Number.isFinite(Date.parse(date));
-
-  return (
-    typeof value.id === "string" &&
-    uuidPattern.test(value.id) &&
-    typeof value.documentId === "string" &&
-    uuidPattern.test(value.documentId) &&
-    typeof value.tokenHash === "string" &&
-    /^[a-f0-9]{64}$/.test(value.tokenHash) &&
-    (value.pinHash === undefined ||
-      (typeof value.pinHash === "string" &&
-        /^[a-f0-9]{64}$/.test(value.pinHash))) &&
-    isValidDate(value.createdAt) &&
-    isValidDate(value.expiresAt) &&
-    Date.parse(value.expiresAt) >
-      Date.parse(value.createdAt) &&
-    (value.revokedAt === undefined ||
-      isValidDate(value.revokedAt))
-  );
-}
-
-
-const isStoredDocumentShareList: JsonValidator<
-  StoredDocumentShare[]
-> = (value): value is StoredDocumentShare[] =>
-  Array.isArray(value) &&
-  value.every(isStoredDocumentShare);
-
-
 function isStoredImage(value: unknown): value is StoredImage {
   if (!isRecord(value)) return false;
   return (
@@ -570,36 +517,6 @@ export async function getDocuments(): Promise<StoredDocument[]> {
       isStoredDocumentList,
     )) ?? []
   );
-}
-
-async function getDocumentShares(): Promise<StoredDocumentShare[]> {
-  return (
-    (await readJsonFile(
-      documentSharesFile,
-      "Belge paylaşım kayıt dosyası",
-      isStoredDocumentShareList,
-    )) ?? []
-  );
-}
-
-export async function getActiveDocumentShares(): Promise<
-  ActiveDocumentShare[]
-> {
-  const now = Date.now();
-
-  return (await getDocumentShares())
-    .filter(
-      (share) =>
-        share.revokedAt === undefined && Date.parse(share.expiresAt) > now,
-    )
-    .map((share) => ({
-      shareId: share.id,
-      documentId: share.documentId,
-      pinProtected: share.pinHash !== undefined,
-      createdAt: share.createdAt,
-      expiresAt: share.expiresAt,
-    }))
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function getPublicImageFile(segments: string[]) {
@@ -1158,46 +1075,6 @@ export async function deleteImageById(id: string) {
   });
 }
 
-const DOCUMENT_SHARE_DURATIONS = {
-  "1h": 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-} as const;
-
-export type DocumentShareDuration =
-  keyof typeof DOCUMENT_SHARE_DURATIONS;
-
-function documentSharePinSecret() {
-  const secret =
-    process.env.DOCUMENT_SHARE_PIN_SECRET || process.env.SESSION_SECRET;
-
-  if (secret && secret.length >= 32) return secret;
-
-  if (process.env.NODE_ENV !== "production") {
-    return "rdm-local-document-share-pin-secret-2026";
-  }
-
-  throw new Error(
-    "DOCUMENT_SHARE_PIN_SECRET veya en az 32 karakterlik SESSION_SECRET tanımlı değil.",
-  );
-}
-
-function hashDocumentSharePin(shareId: string, pin: string) {
-  return createHmac("sha256", documentSharePinSecret())
-    .update(`document-share-pin:${shareId}:${pin}`)
-    .digest("hex");
-}
-
-function safeHashEqual(left: string, right: string) {
-  const leftBuffer = Buffer.from(left, "hex");
-  const rightBuffer = Buffer.from(right, "hex");
-
-  return (
-    leftBuffer.length === rightBuffer.length &&
-    timingSafeEqual(leftBuffer, rightBuffer)
-  );
-}
-
 const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
 
 const DOCUMENT_TYPES = {
@@ -1275,13 +1152,7 @@ function validateDocumentSignature(
   return false;
 }
 
-export async function addDocument(
-  file: File,
-  shareable = false,
-): Promise<StoredDocument> {
-  if (typeof shareable !== "boolean") {
-    throw new AdminFormError("Geçersiz belge paylaşım seçeneği.");
-  }
+export async function addDocument(file: File): Promise<StoredDocument> {
   if (!file.size) {
     throw new AdminFormError("Belge seçilmedi.");
   }
@@ -1311,15 +1182,14 @@ export async function addDocument(
 
   const storedName = `${randomUUID()}${extension}`;
 
-const document: StoredDocument = {
-  id: randomUUID(),
-  name: file.name,
-  storedName,
-  mimeType: DOCUMENT_TYPES[extension],
-  size: buffer.length,
-  createdAt: new Date().toISOString(),
-  shareable,
-};
+  const document: StoredDocument = {
+    id: randomUUID(),
+    name: file.name,
+    storedName,
+    mimeType: DOCUMENT_TYPES[extension],
+    size: buffer.length,
+    createdAt: new Date().toISOString(),
+  };
 
   // Kayıt dosyası bozuksa yeni belge yazma.
 
@@ -1506,220 +1376,5 @@ export async function getDocumentFile(id: string) {
     await fileHandle?.close();
   }
 }
-
-
-export async function createDocumentShare(
-  documentId: string,
-  duration: DocumentShareDuration = "24h",
-  pin = "",
-) {
-  if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
-    throw new AdminFormError("Geçersiz belge kimliği.");
-  }
-
-  if (
-    !Object.prototype.hasOwnProperty.call(
-      DOCUMENT_SHARE_DURATIONS,
-      duration,
-    )
-  ) {
-    throw new AdminFormError("Geçersiz paylaşım süresi.");
-  }
-
-  if (pin !== "" && !/^\d{6}$/.test(pin)) {
-    throw new AdminFormError("Paylaşım PIN'i 6 rakamdan oluşmalıdır.");
-  }
-
-  return withDocumentLock(async () => {
-    const documents = await getDocuments();
-
-    const document = documents.find(
-      (item) => item.id === documentId,
-    );
-
-    if (!document) {
-      throw new AdminFormError("Belge bulunamadı.");
-    }
-
-    if (document.shareable !== true) {
-      throw new AdminFormError(
-        "Bu belge paylaşılabilir olarak işaretlenmemiş.",
-      );
-    }
-
-    // Paylaşılacak dosyanın gerçekten mevcut olduğunu doğrula.
-    const file = await getDocumentFile(documentId);
-
-    if (!file) {
-      throw new AdminFormError(
-        "Belge dosyası bulunamadı veya güvenli değil.",
-      );
-    }
-
-    const shares = await getDocumentShares();
-
-    const hasActiveShare = shares.some(
-      (share) =>
-        share.documentId === documentId &&
-        share.revokedAt === undefined &&
-        Date.parse(share.expiresAt) > Date.now(),
-    );
-
-    if (hasActiveShare) {
-      throw new AdminFormError(
-        "Bu belge için zaten aktif bir paylaşım bağlantısı var. Yeni bağlantı oluşturmadan önce mevcut bağlantıyı iptal edin.",
-      );
-    }
-
-    const token = randomBytes(32).toString("base64url");
-
-    const tokenHash = createHash("sha256")
-      .update(token)
-      .digest("hex");
-
-    const now = new Date();
-
-    const expiresAt = new Date(
-      now.getTime() + DOCUMENT_SHARE_DURATIONS[duration],
-    );
-
-    const shareId = randomUUID();
-
-    const share: StoredDocumentShare = {
-      id: shareId,
-      documentId,
-      tokenHash,
-      pinHash: pin ? hashDocumentSharePin(shareId, pin) : undefined,
-      createdAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-    };
-
-    await writeJsonAtomic(
-      documentSharesFile,
-      [share, ...shares],
-      "Belge paylaşım kayıt dosyası",
-      isStoredDocumentShareList,
-    );
-
-    return {
-      shareId: share.id,
-      token,
-      expiresAt: share.expiresAt,
-    };
-  });
-}
-
-
-
-export async function getDocumentByShareToken(
-  token: string,
-  pin?: string,
-) {
-  if (
-    typeof token !== "string" ||
-    !/^[A-Za-z0-9_-]{43}$/.test(token)
-  ) {
-    return null;
-  }
-
-  const tokenHash = createHash("sha256")
-    .update(token)
-    .digest("hex");
-
-  const shares = await getDocumentShares();
-
-  const share = shares.find(
-    (item) => item.tokenHash === tokenHash,
-  );
-
-  if (!share || share.revokedAt !== undefined) {
-    return null;
-  }
-
-  if (Date.parse(share.expiresAt) <= Date.now()) {
-    return null;
-  }
-
-  if (share.pinHash !== undefined) {
-    if (pin === undefined) {
-      return { status: "requires-pin" as const };
-    }
-
-    if (
-      !/^\d{6}$/.test(pin) ||
-      !safeHashEqual(share.pinHash, hashDocumentSharePin(share.id, pin))
-    ) {
-      return { status: "invalid-pin" as const };
-    }
-  }
-
-  const documents = await getDocuments();
-
-  const document = documents.find(
-    (item) => item.id === share.documentId,
-  );
-
-  if (!document || document.shareable !== true) {
-    return null;
-  }
-
-  const file = await getDocumentFile(document.id);
-
-  if (!file) return null;
-
-  return {
-    status: "ready" as const,
-    ...file,
-  };
-}
-
-
-
-
-
-export async function revokeDocumentShare(
-  shareId: string,
-) {
-  if (!DOCUMENT_UUID_PATTERN.test(shareId)) {
-    throw new AdminFormError(
-      "Geçersiz paylaşım kimliği.",
-    );
-  }
-
-  return withDocumentLock(async () => {
-    const shares = await getDocumentShares();
-
-    const share = shares.find(
-      (item) => item.id === shareId,
-    );
-
-    if (!share) {
-      throw new AdminFormError(
-        "Paylaşım kaydı bulunamadı.",
-      );
-    }
-
-    if (share.revokedAt !== undefined) {
-      return;
-    }
-
-    const updatedShares = shares.map((item) =>
-      item.id === shareId
-        ? {
-            ...item,
-            revokedAt: new Date().toISOString(),
-          }
-        : item,
-    );
-
-    await writeJsonAtomic(
-      documentSharesFile,
-      updatedShares,
-      "Belge paylaşım kayıt dosyası",
-      isStoredDocumentShareList,
-    );
-  });
-}
-
 
 

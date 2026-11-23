@@ -65,7 +65,7 @@ function TaskFields({ task }: { task?: Task }) {
           placeholder="Örn. Dava dosyasını gözden geçir"
         />
       </label>
-      <label className="block text-sm font-semibold text-[#152741] md:col-span-2">
+      <label className="block text-xs md:text-sm font-semibold text-[#152741] md:col-span-2">
         Açıklama
         <textarea
           name="description"
@@ -177,7 +177,7 @@ function TaskCard({ task }: { task: Task }) {
               <input type="hidden" name="id" value={task.id} />
               <TaskFields task={task} />
               <div className="flex justify-end">
-                <button className="w-full rounded-lg bg-[#152741] px-5 py-3 text-sm font-semibold text-white sm:w-auto">
+                <button className="text-xs md:text-sm w-full rounded-lg bg-[#152741] px-5 py-3 text-sm font-semibold text-white sm:w-auto">
                   Değişiklikleri kaydet
                 </button>
               </div>

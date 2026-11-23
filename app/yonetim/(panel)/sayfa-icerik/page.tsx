@@ -236,7 +236,7 @@ function SaveBar({
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-[#152741]">
+          <p className="text-xs md:text-sm font-semibold text-[#152741]">
             Değişiklikleri Kaydet
           </p>
 
@@ -455,7 +455,7 @@ export default async function AdminContentPage({
                       defaultValue={slide.title}
                     />
 
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 text-xs md:text-sm">
                       <TextArea
                         label="Açıklama"
                         name={`heroDescription_${index}`}
@@ -495,6 +495,7 @@ export default async function AdminContentPage({
                   name="servicesIntro"
                   defaultValue={home.servicesIntro}
                   rows={5}
+
                 />
               </div>
 
@@ -517,7 +518,7 @@ export default async function AdminContentPage({
                         defaultValue={service.title}
                       />
 
-                      <div className="lg:col-span-2">
+                      <div className="lg:col-span-2 text-xs md:text-sm">
                         <TextArea
                           label="Açıklama"
                           name={`serviceDescription_${index}`}
@@ -549,7 +550,7 @@ export default async function AdminContentPage({
                         defaultValue={service.title}
                       />
 
-                      <div className="lg:col-span-2">
+                      <div className="lg:col-span-2 text-xs md:text-sm">
                         <TextArea
                           label="Açıklama"
                           name={`serviceSlideDescription_${index}`}
@@ -616,7 +617,7 @@ export default async function AdminContentPage({
                     defaultValue={home.staff.name}
                   />
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 text-xs md:text-sm">
                     <TextArea
                       label="Hakkımızda avukat açıklaması"
                       name="lawyerDescription"
@@ -635,7 +636,7 @@ export default async function AdminContentPage({
                     }
                   />
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 text-xs md:text-sm">
                     <TextArea
                       label="Ekip açıklaması"
                       name="staffDescription"
@@ -737,7 +738,7 @@ export default async function AdminContentPage({
                     defaultValue={contact.location}
                   />
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 text-xs md:text-sm">
                     <TextArea
                       label="Adres"
                       name="address"
@@ -746,7 +747,7 @@ export default async function AdminContentPage({
                     />
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 text-xs md:text-sm">
                     <TextArea
                       label="İletişim giriş yazısı"
                       name="intro"
@@ -758,7 +759,7 @@ export default async function AdminContentPage({
               </div>
 
               {/* MAP */}
-              <div className="space-y-4">
+              <div className="space-y-4 text-xs md:text-sm">
                 <FormSectionLabel
                   title="Harita Ayarları"
                   description="İletişim sayfasında gösterilen Google Haritalar bağlantısı."
